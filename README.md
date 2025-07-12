@@ -3,7 +3,7 @@
 
 If you want to get a secure and fast connection from changing DNS, Dc DNS Changer is the best option!
 
-![Alt text](./20250708_182128.png)
+![Alt text](./20250712_161613.png)
 
 ![Java](https://img.shields.io/badge/java-%23ED8B00.svg?style=for-the-badge&logo=openjdk&logoColor=white)
  
