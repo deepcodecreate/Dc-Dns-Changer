@@ -4,9 +4,7 @@
 If you want to get a secure and fast connection from changing DNS, Dc DNS Changer is the best option!
 
 
-![Java](https://img.shields.io/badge/java-%23ED8B00.svg?style=for-the-badge&logo=openjdk&logoColor=white)
- 
-![GitHub stars](https://img.shields.io/github/stars/deepcodecreate/Dc-Dns-Changer?style=social)
+![Java](https://img.shields.io/badge/java-%23ED8B00.svg?style=for-the-badge&logo=openjdk&logoColor=white)      
 ![GitHub release](https://img.shields.io/github/v/release/deepcodecreate/Dc-Dns-Changer)
 
 ## 🧐 Why Dc Dns Changer?
