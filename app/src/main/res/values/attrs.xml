@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="backgroundPrimary" format="reference|color" />
+    <attr name="backgroundSecondary" format="reference|color" />
+    <attr name="textColorPrimary" format="reference|color" />
+    <attr name="textColorSecondary" format="reference|color" />
+    <attr name="buttonTextColor" format="reference|color" />
+    <attr name="iconColor" format="reference|color" />
+    <attr name="dialogBackgroundColor" format="reference|color" />
+</resources>

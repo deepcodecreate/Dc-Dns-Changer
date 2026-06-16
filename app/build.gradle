@@ -1,0 +1,90 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'dns.changer.deepcode'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "dns.changer.deepcode"
+        minSdk 24
+        targetSdk 34
+        versionCode 5
+        versionName "3.0 release"
+
+        vectorDrawables {
+            useSupportLibrary true
+        }
+    }
+
+    signingConfigs {
+        release {
+            storeFile file("deepcode.jks")
+            storePassword "deep121212A"
+            keyAlias "deepiran"
+            keyPassword "deep121212A"
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    kotlinOptions {
+        jvmTarget = "11"
+    }
+
+    buildFeatures {
+        dataBinding true
+        viewBinding true
+        compose true   
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.3"
+    }
+}
+
+ext {
+    kotlin_version = '1.9.10'
+    material_version = '1.10.0'
+    compose_material_version = '1.8.3'
+    material3_version = '1.3.2'
+}
+
+dependencies {
+    
+    implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
+    implementation 'dnsjava:dnsjava:3.5.2'
+    implementation 'commons-io:commons-io:2.11.0'
+    implementation 'androidx.core:core-ktx:1.10.1'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.activity:activity-ktx:1.7.2'
+    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.databinding:databinding-runtime:8.0.0'
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'com.squareup.okhttp3:okhttp:4.9.1'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    constraints {
+        implementation('org.jetbrains.kotlin:kotlin-stdlib-jdk7') {
+            version { strictly "$kotlin_version" }
+        }
+        implementation('org.jetbrains.kotlin:kotlin-stdlib-jdk8') {
+            version { strictly "$kotlin_version" }
+        }
+    }
+}

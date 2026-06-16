@@ -1,0 +1,173 @@
+<resources>
+
+    <style name="AppTheme" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorOnPrimary">#FFA88B</item>
+        <item name="colorPrimary">#2B100E</item>
+        <item name="fontFamily">@font/appfont</item>
+        <item name="colorPrimaryVariant">#1B100E</item>
+        <item name="colorPrimaryDark">#120C0B</item>
+        <item name="colorAccent">#FFA88B</item>
+        <item name="colorControlActivated">#FFA88B</item>
+        <item name="colorControlHighlight">#352726</item>
+        <item name="colorControlNormal">#E1B382</item>
+        <item name="android:statusBarColor">#2B100E</item>
+        <item name="dialogBackgroundColor">#1B100E</item>
+        <item name="android:navigationBarColor">#392726</item>
+    </style>
+
+    <style name="AppTheme.GrayMaterial" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorOnPrimary">#B0B0B0</item>
+        <item name="colorPrimary">#303030</item>
+        <item name="fontFamily">@font/appfont</item>
+        <item name="colorPrimaryVariant">#424242</item>
+        <item name="colorPrimaryDark">#212121</item>
+        <item name="colorAccent">#9E9E9E</item>
+        <item name="colorControlActivated">#757575</item>
+        <item name="colorControlHighlight">#616161</item>
+        <item name="colorControlNormal">#B0B0B0</item>
+        <item name="android:statusBarColor">#303030</item>
+        <item name="dialogBackgroundColor">#424242</item>
+        <item name="android:navigationBarColor">#121212</item>
+    </style>
+
+    <style name="BaseFullScreen" parent="">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+    </style>
+
+    <style name="AppTheme.FullScreen" parent="AppTheme">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+    </style>
+
+    <style name="AppTheme.GrayMaterial.FullScreen" parent="AppTheme.GrayMaterial">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+    </style>
+    
+    <style name="CustomPopupMenu" parent="Widget.AppCompat.PopupMenu">
+    <item name="android:popupBackground">@drawable/popup_menu_background</item>
+    <item name="android:dropDownListViewStyle">@style/CustomPopupMenuListView</item>
+</style>
+
+<style name="CustomPopupMenuListView" parent="Widget.AppCompat.ListView.DropDown">
+    <item name="android:divider">@null</item>
+    <item name="android:dividerHeight">0dp</item>
+    <item name="android:background">@drawable/popup_menu_background</item>
+</style>
+
+    <style name="BaseDialogTheme" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="android:windowBackground">@drawable/dialog_background</item>
+        <item name="android:background">@drawable/dialog_background</item>
+        <item name="android:forceDarkAllowed">true</item>
+        <item name="android:windowMinWidthMajor">90%</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowCloseOnTouchOutside">true</item>
+        <item name="buttonBarPositiveButtonStyle">@style/BaseDialogButton</item>
+        <item name="buttonBarNegativeButtonStyle">@style/BaseDialogButton</item>
+    </style>
+
+    <style name="CustomDialogTheme" parent="BaseDialogTheme">
+        <item name="android:textColor">#FFA88B</item>
+        <item name="android:textColorPrimary">#FFA88B</item>
+        <item name="android:textColorSecondary">#FFA88B</item>
+    </style>
+
+    <style name="GrayDialogTheme" parent="BaseDialogTheme">
+        <item name="android:textColor">#9E9E9E</item>
+        <item name="android:textColorPrimary">#B0B0B0</item>
+        <item name="android:textColorSecondary">#757575</item>
+    </style>
+
+    <style name="BaseDialogButton" parent="Widget.Material3.Button.TextButton.Dialog">
+        <item name="backgroundTint">?attr/dialogBackgroundColor</item>
+    </style>
+ 
+    <style name="AlwaysDarkDialogButton" parent="BaseDialogButton">
+        <item name="android:textColor">#FFA88B</item>
+    </style>
+
+    <style name="GrayDialogButton" parent="BaseDialogButton">
+        <item name="android:textColor">#757575</item>
+    </style>
+    
+    <style name="BasePopupMenu" parent="ThemeOverlay.MaterialComponents.Dark">
+        <item name="android:itemBackground">?attr/colorPrimary</item>
+        <item name="android:textColorSecondary">?attr/colorAccent</item>
+    </style>
+
+    <style name="BlackPopupMenu" parent="BasePopupMenu">
+        <item name="android:colorBackground">#1B100E</item>
+        <item name="android:textColor">#FFA88B</item>
+    </style>
+
+    <style name="GrayPopupMenu" parent="BasePopupMenu">
+        <item name="android:colorBackground">#303030</item>
+        <item name="android:textColor">#B0B0B0</item>
+    </style>
+
+   <style name="TextSwitcher">
+      <item name="fontFamily">@font/appfont</item>
+   </style>
+
+    <style name="BaseMenuItem" parent="Widget.AppCompat.PopupMenu">
+        <item name="android:textColor">?attr/colorAccent</item>
+        <item name="android:background">?attr/colorPrimary</item>
+    </style>
+
+    <style name="BlackMenuItem" parent="BaseMenuItem">
+        <item name="android:textColor">#FFA88B</item>
+        <item name="android:background">#1B100E</item>
+    </style>
+
+    <style name="GrayMenuItem" parent="BaseMenuItem">
+        <item name="android:textColor">#B0B0B0</item>
+        <item name="android:background">#303030</item>
+    </style>
+
+    <style name="BaseTextInputLayout" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="hintTextColor">?attr/colorAccent</item>
+        <item name="helperTextTextColor">?attr/colorAccent</item>
+        <item name="errorTextColor">?attr/colorAccent</item>
+        <item name="counterTextColor">?attr/colorAccent</item>
+        <item name="android:textColorHint">?attr/colorAccent</item>
+        <item name="endIconTint">?attr/colorAccent</item>
+    </style>
+
+    <style name="CustomTextInputLayout" parent="BaseTextInputLayout">
+        <item name="boxStrokeColor">#FFA88B</item>
+    </style>
+
+    <style name="GrayTextInputLayout" parent="BaseTextInputLayout">
+        <item name="boxStrokeColor">#757575</item>
+    </style>
+
+    <style name="BaseTextInputEditText" parent="Widget.MaterialComponents.TextInputEditText.OutlinedBox">
+        <item name="android:textCursorDrawable">@drawable/cursor_color</item>
+        <item name="android:textColorHighlight">?attr/colorAccent</item>
+        <item name="android:scrollbarThumbVertical">@drawable/cursor_color</item>
+    </style>
+
+    <style name="CustomTextInputEditText" parent="BaseTextInputEditText">
+        <item name="android:textColor">#E1B382</item>
+    </style>
+
+    <style name="GrayTextInputEditText" parent="BaseTextInputEditText">
+        <item name="android:textColor">#B0B0B0</item>
+    </style>
+    
+    <style name="AppTheme.DebugActivity" parent="AppTheme">
+        <item name="actionBarStyle">@style/ThemeOverlay.MaterialComponents.ActionBar.Primary</item>
+        <item name="actionBarTheme">@style/Widget.MaterialComponents.ActionBar.Primary</item>
+        <item name="windowActionBar">true</item>
+        <item name="windowNoTitle">false</item>
+    </style>
+
+    <style name="AppTheme.GrayMaterial.DebugActivity" parent="AppTheme.GrayMaterial">
+        <item name="actionBarStyle">@style/ThemeOverlay.MaterialComponents.ActionBar.Primary</item>
+        <item name="actionBarTheme">@style/Widget.MaterialComponents.ActionBar.Primary</item>
+        <item name="windowActionBar">true</item>
+        <item name="windowNoTitle">false</item>
+    </style>
+
+</resources>

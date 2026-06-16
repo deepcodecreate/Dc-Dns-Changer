@@ -1,0 +1,14 @@
+<resources>
+	<color name="colorPrimary">#241917</color>
+	<color name="colorPrimaryDark">#241917</color>
+    <color name="colorPrimaryVariant">#ffa88b</color>
+	<color name="colorAccent">#ffa88b</color>
+    <color name="colorControlActivated">#ffa88b</color>
+    <color name="peach_orange">#ffa88b</color>
+	<color name="colorControlHighlight">#ffa88b</color>
+	<color name="colorControlNormal">#241917</color>
+    <color name="popup_background">#241917</color>
+    <color name="popup_background_gray">#212121</color>
+    <color name="popup_text_color">#ffa88b</color>
+    <color name="popup_text_color_gray">#FFEEEEEE</color>
+</resources>

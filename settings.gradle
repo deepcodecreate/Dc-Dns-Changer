@@ -1,0 +1,26 @@
+pluginManagement {
+  repositories {
+    gradlePluginPortal()
+    google()
+    mavenCentral()
+  }
+}
+
+dependencyResolutionManagement {
+  repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+  repositories {
+    google()
+    mavenCentral()
+        maven { url "https://androidx.dev/snapshots/builds/14400893/artifacts/repository" }
+        maven { url "https://jitpack.io" }
+        maven { url "https://dl.google.com/dl/android/maven2/" }
+        maven { url "https://plugins.gradle.org/m2/" }
+        maven { url "https://repo.maven.apache.org/maven2/" }
+        maven { url "https://maven.myket.ir" }
+       // maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
+  }
+}
+
+rootProject.name = "Dns Changer"
+
+include(":app")

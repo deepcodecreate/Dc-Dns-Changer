@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Dns Changer</string>
+    <string name="connected">متصل</string>
+    <string name="disconnected">متصل نیست</string>
+    <string name="enable_dns">فعال کردن DNS</string>
+    <string name="disable_dns">قطع DNS</string>
+    <string name="select_server">انتخاب سرور پیشنهادی</string>
+    <string name="primary_dns">DNS اول</string>
+    <string name="secondary_dns">DNS دوم (اختیاری)</string>
+    <string name="status">وضعیت: %1$s</string>
+    <string name="custom_ipv4_title">شبکه IPv4 سفارشی</string>
+    <string name="dhcp_label">استفاده از DHCP (ممکن است باعث خرابی اتصال شود)</string>
+    <string name="battery_optimization_label">نادیده گرفتن بهینه‌سازی باتری</string>
+    <string name="run_background_label">اجرا در پس‌زمینه</string>
+    <string name="run_boot_label">شروع خودکار هنگام روشن شدن دستگاه</string>
+    <string name="language_label">استفاده از زبان انگلیسی</string>
+    <string name="btn_customize_ipv4">سفارشی کردن IPv4 (پیش‌فرض: 10.0.0.2 یا 10.0.0.1)</string>
+    <string name="network_settings_title">تنظیمات شبکه</string>
+    <string name="save">ذخیره</string>
+    <string name="cancel">انصراف</string>
+    <string name="settings_saved">تنظیمات ذخیره شد</string>
+    <string name="language_change_title">تغییر زبان</string>
+    <string name="language_change_message">زبان برنامه به انگلیسی تغییر خواهد کرد. برای اعمال تغییرات برنامه را مجدداً راه‌اندازی کنید.</string>
+    <string name="restart">راه‌اندازی مجدد</string>
+    <string name="connection_change_error">خطای اتصال: %1$s</string>
+    <string name="disconnect_first">لطفاً ابتدا اتصال VPN را قطع کنید.</string>
+    <string name="state_receiver_error">خطای وضعیت: %1$s</string>
+    <string name="permission_check_error">خطای بررسی مجوز: %1$s</string>
+    <string name="permission_result_error">خطای نتیجه مجوز: %1$s</string>
+    <string name="vpn_prepare_error">خطای آماده‌سازی VPN: %1$s</string>
+    <string name="activity_result_error">خطای نتیجه فعالیت: %1$s</string>
+    <string name="dns_start_error">خطای شروع DNS: %1$s</string>
+    <string name="dns_changed_success">DNS با موفقیت تغییر کرد</string>
+<string name="dns_change_failed">تغییر DNS ناموفق بود</string>
+<string name="dns_restored_success">DNS با موفقیت بازگردانی شد</string>
+<string name="dns_restore_failed">بازگردانی DNS ناموفق بود</string>
+<string name="connected_success">اتصال با موفقیت برقرار شد</string>
+<string name="disconnected_success">اتصال با موفقیت قطع شد</string>
+</resources>

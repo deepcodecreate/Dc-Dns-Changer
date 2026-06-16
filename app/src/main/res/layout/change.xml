@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+     xmlns:android="http://schemas.android.com/apk/res/android"
+     xmlns:app="http://schemas.android.com/apk/res-auto"
+     android:layout_height="match_parent"
+     android:layout_width="match_parent"
+     android:background="?attr/colorPrimaryDark"
+     android:fillViewport="true">
+
+    <LinearLayout
+         android:layout_height="wrap_content"
+         android:layout_width="match_parent"
+         android:orientation="vertical">
+
+        <LinearLayout
+             android:layout_height="?attr/actionBarSize"
+             android:layout_width="match_parent"
+             android:background="?attr/colorPrimary"
+             android:gravity="center_vertical"
+             android:elevation="0dp"
+             android:orientation="horizontal">
+
+            <TextView
+                 android:layout_height="wrap_content"
+                 android:layout_width="wrap_content"
+                 android:textSize="20sp"
+                 android:textColor="?attr/colorOnPrimary"
+                 android:layout_marginStart="20dp"
+                 android:text="DC DnsChanger"
+                 android:textStyle="bold" />
+
+            <LinearLayout
+                 android:layout_height="wrap_content"
+                 android:layout_width="match_parent"
+                 android:padding="8dp"
+                 android:orientation="horizontal"
+                 android:layout_weight="1"
+                 android:id="@+id/linearmiane">
+
+            </LinearLayout>
+
+            <ImageView
+                 android:layout_height="24dp"
+                 android:layout_width="24dp"
+                 android:src="@drawable/ic_testnet"
+                 android:layout_marginEnd="18dp"
+                 android:tint="?attr/colorAccent"
+                 android:id="@+id/nettest" />
+
+            <ImageView
+                 android:layout_height="24dp"
+                 android:layout_width="24dp"
+                 android:src="@drawable/ic_vpn_lock"
+                 android:layout_marginEnd="18dp"
+                 android:tint="?attr/colorAccent"
+                 android:id="@+id/logo_image" />
+
+            <ImageView
+                 android:layout_height="24dp"
+                 android:layout_width="24dp"
+                 android:src="@drawable/ic_setting"
+                 android:layout_marginEnd="20dp"
+                 android:tint="?attr/colorAccent"
+                 android:id="@+id/settingsimage" />
+
+        </LinearLayout>
+
+        <LinearLayout
+             android:layout_height="wrap_content"
+             android:layout_width="match_parent"
+             android:gravity="center_horizontal"
+             android:padding="20dp"
+             android:orientation="vertical">
+
+            <com.google.android.material.card.MaterialCardView
+                 android:layout_height="wrap_content"
+                 android:layout_width="match_parent"
+                 android:layout_marginBottom="18dp"
+                 app:strokeColor="#1A000000"
+                 app:cardElevation="0dp"
+                 app:strokeWidth="1dp"
+                 app:cardBackgroundColor="?attr/colorPrimary"
+                 app:cardCornerRadius="24dp">
+
+                <LinearLayout
+                     android:layout_height="wrap_content"
+                     android:layout_width="match_parent"
+                     android:padding="20dp"
+                     android:orientation="vertical">
+
+                    <TextView
+                         android:layout_height="wrap_content"
+                         android:layout_width="match_parent"
+                         android:layout_marginBottom="16dp"
+                         android:textSize="16sp"
+                         android:textColor="?attr/colorAccent"
+                         android:text="DNS Configuration"
+                         android:textStyle="bold" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                         android:layout_height="wrap_content"
+                         android:layout_width="match_parent"
+                         app:boxCornerRadiusBottomEnd="16dp"
+                         app:boxCornerRadiusTopStart="16dp"
+                         app:boxStrokeWidth="0dp"
+                         android:layout_marginBottom="12dp"
+                         app:boxCornerRadiusTopEnd="16dp"
+                         android:hint="Primary DNS"
+                         app:boxCornerRadiusBottomStart="16dp"
+                         app:boxStrokeWidthFocused="0dp"
+                         android:textColorHint="?attr/colorAccent"
+                         style="@style/BaseTextInputLayout"
+                         app:boxBackgroundMode="filled"
+                         android:id="@+id/dns1_layout">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                             android:layout_height="wrap_content"
+                             android:layout_width="match_parent"
+                             android:gravity="center_vertical"
+                             android:importantForAutofill="no"
+                             android:textSize="18sp"
+                             android:textColor="?attr/colorOnPrimary"
+                             android:inputType="phone"
+                             android:digits="0123456789."
+                             android:id="@+id/dns1_edittext"
+                             android:text="8.8.8.8" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                         android:layout_height="wrap_content"
+                         android:layout_width="match_parent"
+                         app:boxCornerRadiusBottomEnd="16dp"
+                         app:boxCornerRadiusTopStart="16dp"
+                         app:boxStrokeWidth="0dp"
+                         android:layout_marginBottom="12dp"
+                         app:boxCornerRadiusTopEnd="16dp"
+                         android:hint="Secondary DNS (Optional)"
+                         app:boxCornerRadiusBottomStart="16dp"
+                         app:boxStrokeWidthFocused="0dp"
+                         android:textColorHint="?attr/colorAccent"
+                         style="@style/BaseTextInputLayout"
+                         app:boxBackgroundMode="filled"
+                         android:id="@+id/dns2_layout">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                             android:layout_height="wrap_content"
+                             android:layout_width="match_parent"
+                             android:gravity="center_vertical"
+                             android:importantForAutofill="no"
+                             android:textSize="18sp"
+                             android:textColor="?attr/colorOnPrimary"
+                             android:inputType="phone"
+                             android:digits="0123456789."
+                             android:id="@+id/dns2_edittext"
+                             android:text="8.8.4.4" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                         android:layout_height="wrap_content"
+                         android:layout_width="match_parent"
+                         app:boxCornerRadiusBottomEnd="16dp"
+                         app:boxCornerRadiusTopStart="16dp"
+                         app:boxStrokeWidth="0dp"
+                         android:layout_marginBottom="12dp"
+                         app:boxCornerRadiusTopEnd="16dp"
+                         android:hint="DNS IPv6 Primary"
+                         app:boxCornerRadiusBottomStart="16dp"
+                         app:boxStrokeWidthFocused="0dp"
+                         android:textColorHint="?attr/colorAccent"
+                         style="@style/BaseTextInputLayout"
+                         app:boxBackgroundMode="filled"
+                         android:id="@+id/ipv6_dns1_layout">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                             android:layout_height="wrap_content"
+                             android:layout_width="match_parent"
+                             android:importantForAutofill="no"
+                             android:textSize="16sp"
+                             android:textColor="?attr/colorOnPrimary"
+                             android:inputType="text"
+                             android:id="@+id/ipv6_dns1_edittext" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                         android:layout_height="wrap_content"
+                         android:layout_width="match_parent"
+                         app:boxCornerRadiusBottomEnd="16dp"
+                         app:boxCornerRadiusTopStart="16dp"
+                         app:boxStrokeWidth="0dp"
+                         app:boxCornerRadiusTopEnd="16dp"
+                         android:hint="DNS IPv6 Secondary"
+                         app:boxCornerRadiusBottomStart="16dp"
+                         app:boxStrokeWidthFocused="0dp"
+                         android:textColorHint="?attr/colorAccent"
+                         style="@style/BaseTextInputLayout"
+                         app:boxBackgroundMode="filled"
+                         android:id="@+id/ipv6_dns2_layout">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                             android:layout_height="wrap_content"
+                             android:layout_width="match_parent"
+                             android:importantForAutofill="no"
+                             android:textSize="16sp"
+                             android:textColor="?attr/colorOnPrimary"
+                             android:inputType="text"
+                             android:id="@+id/ipv6_dns2_edittext" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                 android:layout_height="wrap_content"
+                 android:layout_width="match_parent"
+                 android:layout_marginBottom="16dp"
+                 app:strokeColor="#1A000000"
+                 app:cardElevation="0dp"
+                 app:strokeWidth="1dp"
+                 app:cardBackgroundColor="?attr/colorPrimary"
+                 app:cardCornerRadius="24dp">
+
+                <LinearLayout
+                     android:layout_height="wrap_content"
+                     android:layout_width="match_parent"
+                     android:padding="20dp"
+                     android:orientation="vertical">
+
+                    <TextView
+                         android:layout_height="wrap_content"
+                         android:layout_width="match_parent"
+                         android:layout_marginBottom="16dp"
+                         android:textSize="16sp"
+                         android:textColor="?attr/colorAccent"
+                         android:text="Connection"
+                         android:textStyle="bold" />
+
+                    <com.google.android.material.button.MaterialButton
+                         android:layout_height="60dp"
+                         android:layout_width="match_parent"
+                         app:icon="@drawable/ic_vpn_on"
+                         app:rippleColor="@android:color/transparent"
+                         android:textSize="15sp"
+                         app:cornerRadius="30dp"
+                         android:backgroundTint="?attr/colorPrimaryDark"
+                         app:iconTint="?attr/colorAccent"
+                         android:textColor="?attr/colorOnPrimary"
+                         android:textStyle="bold"
+                         android:id="@+id/vpn_button" />
+
+                    <com.google.android.material.button.MaterialButton
+                         android:layout_height="60dp"
+                         android:layout_width="match_parent"
+                         app:rippleColor="@android:color/transparent"
+                         android:textSize="15sp"
+                         app:iconTint="?attr/colorAccent"
+                         android:textColor="?attr/colorOnPrimary"
+                         android:layout_marginTop="12dp"
+                         app:icon="@drawable/ic_vpn_shield"
+                         app:cornerRadius="30dp"
+                         android:backgroundTint="?attr/colorPrimaryDark"
+                         android:textStyle="bold"
+                         android:id="@+id/select_server_button"
+                         android:text="Select Server" />
+
+                    <TextView
+                         android:layout_height="wrap_content"
+                         android:layout_width="match_parent"
+                         android:gravity="center"
+                         android:clickable="true"
+                         android:padding="12dp"
+                         android:textSize="14sp"
+                         android:textColor="?attr/colorOnPrimary"
+                         android:layout_marginTop="12dp"
+                         android:focusable="true"
+                         android:id="@+id/ping_textview"
+                         android:text="Status: Not connected" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                 android:layout_height="wrap_content"
+                 android:layout_width="match_parent"
+                 app:strokeColor="#1A000000"
+                 app:cardElevation="0dp"
+                 app:strokeWidth="1dp"
+                 app:cardBackgroundColor="?attr/colorPrimary"
+                 app:cardCornerRadius="24dp">
+
+                <LinearLayout
+                     android:layout_height="wrap_content"
+                     android:layout_width="match_parent"
+                     android:gravity="center"
+                     android:padding="20dp"
+                     android:orientation="vertical">
+
+                    <TextView
+                         android:layout_height="wrap_content"
+                         android:layout_width="match_parent"
+                         android:layout_marginBottom="8dp"
+                         android:gravity="end"
+                         android:textSize="11sp"
+                         android:textColor="?attr/colorAccent"
+                         android:text="IN-APP DISCOVERY"
+                         android:textStyle="bold" />
+
+                    <TextSwitcher
+                         android:layout_height="wrap_content"
+                         android:layout_width="match_parent"
+                         app:font="@font/appfont"
+                         android:inAnimation="@android:anim/fade_in"
+                         android:outAnimation="@android:anim/fade_out"
+                         android:id="@+id/text_hint_switcher">
+
+                    </TextSwitcher>
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</ScrollView>

@@ -1,0 +1,43 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+   
+    <style name="Theme.DnsChanger" parent="Theme.Material3.Dark.NoActionBar">
+        
+        <item name="colorPrimary">#241917</item>
+        <item name="colorPrimaryVariant">#241917</item>
+        <item name="colorOnPrimary">#E1B382</item>
+        <item name="colorControlActivated">#ffa88b</item>
+        <item name="colorSecondary">#ffa88b</item>
+        <item name="colorSecondaryVariant">#ffa88b</item>
+        <item name="colorOnSecondary">#E1B382</item>
+        
+        
+        <item name="android:statusBarColor" tools:targetApi="l">?attr/colorPrimaryVariant</item>
+        
+        <item name="backgroundPrimary">#241917</item>
+        <item name="backgroundSecondary">#241917</item>
+        <item name="textColorPrimary">#E1B382</item>
+        <item name="textColorSecondary">#E1B382</item>
+        <item name="buttonTextColor">#E1B382</item>
+        <item name="iconColor">#ffa88b</item>
+    </style>
+    
+    <style name="Theme.DnsChanger.Light" parent="Theme.Material3.Dark.NoActionBar">">
+        <item name="colorPrimary">#ffa88b</item>
+        <item name="colorPrimaryVariant">#ffa88b</item>
+        <item name="colorOnPrimary">#E1B382</item>
+        <item name="colorControlActivated">#ffa88b</item>
+        <item name="colorSecondary">#241917</item>
+        <item name="colorSecondaryVariant">#241917</item>
+        <item name="colorOnSecondary">#E1B382</item>
+        
+        <item name="android:statusBarColor" tools:targetApi="l">?attr/colorPrimaryVariant</item>
+        
+        <item name="backgroundPrimary">#241917</item>
+        <item name="backgroundSecondary">#E1B382</item>
+        <item name="textColorPrimary">#E1B382</item>
+        <item name="textColorSecondary">#E1B382</item>
+        <item name="buttonTextColor">#E1B382</item>
+        <item name="iconColor">#E1B382</item>
+    </style>
+    
+</resources>
