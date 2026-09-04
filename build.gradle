@@ -1,37 +1,14 @@
-buildscript {
-    ext.kotlin_version = '1.8.10'
-    
-    repositories {
-        google()
-        mavenCentral()
-        maven { url "https://jitpack.io" }
-        maven { url "https://dl.google.com/dl/android/maven2/" }
-        maven { url "https://plugins.gradle.org/m2/" }
-        maven { url "https://repo.maven.apache.org/maven2/" }
-        maven { url "https://maven.myket.ir" }
-        //maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
-        maven { url "https://androidx.dev/snapshots/builds/14400893/artifacts/repository" }
-    }
-    
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.0.0'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-    }
+plugins {
+    id 'com.android.application' version '8.7.2' apply false
+    id 'org.jetbrains.kotlin.android' version '1.9.24' apply false
 }
 
-allprojects {
-    repositories {
-    }
-    
-    configurations.all {
-        resolutionStrategy {
-            force "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version",
-                  "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version",
-                  "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+// AndroidIDE / Termux OpenJDK 21: jlink dies on --disable-plugin system-modules.
+// Disable any leftover JdkImage tasks if a plugin still registers them.
+subprojects {
+    afterEvaluate { project ->
+        project.tasks.matching { it.name.toLowerCase().contains("jdkimage") }.configureEach {
+            enabled = false
         }
     }
-}
-
-task clean(type: Delete) {
-    delete rootProject.buildDir
 }

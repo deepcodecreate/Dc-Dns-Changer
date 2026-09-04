@@ -42,14 +42,6 @@
             <ImageView
                  android:layout_height="24dp"
                  android:layout_width="24dp"
-                 android:src="@drawable/ic_testnet"
-                 android:layout_marginEnd="18dp"
-                 android:tint="?attr/colorAccent"
-                 android:id="@+id/nettest" />
-
-            <ImageView
-                 android:layout_height="24dp"
-                 android:layout_width="24dp"
                  android:src="@drawable/ic_vpn_lock"
                  android:layout_marginEnd="18dp"
                  android:tint="?attr/colorAccent"
@@ -89,13 +81,93 @@
                      android:orientation="vertical">
 
                     <TextView
+                         android:id="@+id/config_title"
                          android:layout_height="wrap_content"
                          android:layout_width="match_parent"
-                         android:layout_marginBottom="16dp"
+                         android:layout_marginBottom="8dp"
                          android:textSize="16sp"
                          android:textColor="?attr/colorAccent"
                          android:text="DNS Configuration"
                          android:textStyle="bold" />
+
+                    <TextView
+                         android:id="@+id/protocol_subtitle"
+                         android:layout_height="wrap_content"
+                         android:layout_width="match_parent"
+                         android:layout_marginBottom="12dp"
+                         android:textSize="12sp"
+                         android:textColor="?attr/colorOnPrimary"
+                         android:alpha="0.75"
+                         android:text="UDP · standard port 53" />
+
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                         android:id="@+id/protocol_group"
+                         android:layout_width="match_parent"
+                         android:layout_height="wrap_content"
+                         android:layout_marginBottom="16dp"
+                         app:singleSelection="true"
+                         app:selectionRequired="true">
+
+                        <com.google.android.material.button.MaterialButton
+                             android:id="@+id/btn_proto_udp"
+                             style="@style/Widget.Material3.Button.OutlinedButton"
+                             android:layout_width="0dp"
+                             android:layout_height="44dp"
+                             android:layout_weight="1"
+                             android:text="UDP"
+                             android:textSize="12sp"
+                             android:insetTop="0dp"
+                             android:insetBottom="0dp"
+                             app:strokeColor="?attr/colorAccent"
+                             android:textColor="?attr/colorOnPrimary"
+                             app:backgroundTint="?attr/colorPrimaryDark"
+                             app:cornerRadius="12dp"/>
+
+                        <com.google.android.material.button.MaterialButton
+                             android:id="@+id/btn_proto_tcp"
+                             style="@style/Widget.Material3.Button.OutlinedButton"
+                             android:layout_width="0dp"
+                             android:layout_height="44dp"
+                             android:layout_weight="1"
+                             android:text="TCP"
+                             android:textSize="12sp"
+                             android:insetTop="0dp"
+                             android:insetBottom="0dp"
+                             app:strokeColor="?attr/colorAccent"
+                             android:textColor="?attr/colorOnPrimary"
+                             app:backgroundTint="?attr/colorPrimaryDark"
+                             app:cornerRadius="12dp"/>
+
+                        <com.google.android.material.button.MaterialButton
+                             android:id="@+id/btn_proto_dot"
+                             style="@style/Widget.Material3.Button.OutlinedButton"
+                             android:layout_width="0dp"
+                             android:layout_height="44dp"
+                             android:layout_weight="1"
+                             android:text="DoT"
+                             android:textSize="12sp"
+                             android:insetTop="0dp"
+                             android:insetBottom="0dp"
+                             app:strokeColor="?attr/colorAccent"
+                             android:textColor="?attr/colorOnPrimary"
+                             app:backgroundTint="?attr/colorPrimaryDark"
+                             app:cornerRadius="12dp"/>
+
+                        <com.google.android.material.button.MaterialButton
+                             android:id="@+id/btn_proto_doh"
+                             style="@style/Widget.Material3.Button.OutlinedButton"
+                             android:layout_width="0dp"
+                             android:layout_height="44dp"
+                             android:layout_weight="1"
+                             android:text="DoH"
+                             android:textSize="12sp"
+                             android:insetTop="0dp"
+                             android:insetBottom="0dp"
+                             app:strokeColor="?attr/colorAccent"
+                             android:textColor="?attr/colorOnPrimary"
+                             app:backgroundTint="?attr/colorPrimaryDark"
+                             app:cornerRadius="12dp"/>
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
 
                     <com.google.android.material.textfield.TextInputLayout
                          android:layout_height="wrap_content"
@@ -118,10 +190,9 @@
                              android:layout_width="match_parent"
                              android:gravity="center_vertical"
                              android:importantForAutofill="no"
-                             android:textSize="18sp"
+                             android:textSize="16sp"
                              android:textColor="?attr/colorOnPrimary"
-                             android:inputType="phone"
-                             android:digits="0123456789."
+                             android:inputType="text"
                              android:id="@+id/dns1_edittext"
                              android:text="8.8.8.8" />
 
@@ -148,13 +219,93 @@
                              android:layout_width="match_parent"
                              android:gravity="center_vertical"
                              android:importantForAutofill="no"
-                             android:textSize="18sp"
+                             android:textSize="16sp"
                              android:textColor="?attr/colorOnPrimary"
-                             android:inputType="phone"
-                             android:digits="0123456789."
+                             android:inputType="text"
                              android:id="@+id/dns2_edittext"
                              android:text="8.8.4.4" />
 
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                         android:layout_height="wrap_content"
+                         android:layout_width="match_parent"
+                         app:boxCornerRadiusBottomEnd="16dp"
+                         app:boxCornerRadiusTopStart="16dp"
+                         app:boxStrokeWidth="0dp"
+                         android:layout_marginBottom="12dp"
+                         app:boxCornerRadiusTopEnd="16dp"
+                         android:hint="DoT hostname (SNI)"
+                         app:boxCornerRadiusBottomStart="16dp"
+                         app:boxStrokeWidthFocused="0dp"
+                         android:textColorHint="?attr/colorAccent"
+                         style="@style/BaseTextInputLayout"
+                         app:boxBackgroundMode="filled"
+                         android:visibility="gone"
+                         android:id="@+id/hostname_layout">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                             android:layout_height="wrap_content"
+                             android:layout_width="match_parent"
+                             android:importantForAutofill="no"
+                             android:textSize="16sp"
+                             android:textColor="?attr/colorOnPrimary"
+                             android:inputType="textUri"
+                             android:id="@+id/hostname_edittext" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                         android:layout_height="wrap_content"
+                         android:layout_width="match_parent"
+                         app:boxCornerRadiusBottomEnd="16dp"
+                         app:boxCornerRadiusTopStart="16dp"
+                         app:boxStrokeWidth="0dp"
+                         android:layout_marginBottom="12dp"
+                         app:boxCornerRadiusTopEnd="16dp"
+                         android:hint="DoH URL"
+                         app:boxCornerRadiusBottomStart="16dp"
+                         app:boxStrokeWidthFocused="0dp"
+                         android:textColorHint="?attr/colorAccent"
+                         style="@style/BaseTextInputLayout"
+                         app:boxBackgroundMode="filled"
+                         android:visibility="gone"
+                         android:id="@+id/doh_url_layout">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                             android:layout_height="wrap_content"
+                             android:layout_width="match_parent"
+                             android:importantForAutofill="no"
+                             android:textSize="15sp"
+                             android:textColor="?attr/colorOnPrimary"
+                             android:inputType="textUri"
+                             android:id="@+id/doh_url_edittext" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                         android:layout_height="wrap_content"
+                         android:layout_width="match_parent"
+                         app:boxCornerRadiusBottomEnd="16dp"
+                         app:boxCornerRadiusTopStart="16dp"
+                         app:boxStrokeWidth="0dp"
+                         android:layout_marginBottom="12dp"
+                         app:boxCornerRadiusTopEnd="16dp"
+                         android:hint="Port"
+                         app:boxCornerRadiusBottomStart="16dp"
+                         app:boxStrokeWidthFocused="0dp"
+                         android:textColorHint="?attr/colorAccent"
+                         style="@style/BaseTextInputLayout"
+                         app:boxBackgroundMode="filled"
+                         android:visibility="gone"
+                         android:id="@+id/port_layout">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                             android:layout_height="wrap_content"
+                             android:layout_width="match_parent"
+                             android:importantForAutofill="no"
+                             android:textSize="16sp"
+                             android:textColor="?attr/colorOnPrimary"
+                             android:inputType="number"
+                             android:id="@+id/port_edittext" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
@@ -231,6 +382,7 @@
                      android:orientation="vertical">
 
                     <TextView
+                         android:id="@+id/connection_title"
                          android:layout_height="wrap_content"
                          android:layout_width="match_parent"
                          android:layout_marginBottom="16dp"
@@ -239,18 +391,35 @@
                          android:text="Connection"
                          android:textStyle="bold" />
 
-                    <com.google.android.material.button.MaterialButton
+                    <FrameLayout
                          android:layout_height="60dp"
-                         android:layout_width="match_parent"
-                         app:icon="@drawable/ic_vpn_on"
-                         app:rippleColor="@android:color/transparent"
-                         android:textSize="15sp"
-                         app:cornerRadius="30dp"
-                         android:backgroundTint="?attr/colorPrimaryDark"
-                         app:iconTint="?attr/colorAccent"
-                         android:textColor="?attr/colorOnPrimary"
-                         android:textStyle="bold"
-                         android:id="@+id/vpn_button" />
+                         android:layout_width="match_parent">
+
+                        <com.google.android.material.button.MaterialButton
+                             android:layout_height="match_parent"
+                             android:layout_width="match_parent"
+                             app:icon="@drawable/ic_vpn_on"
+                             app:rippleColor="@android:color/transparent"
+                             android:textSize="15sp"
+                             app:cornerRadius="30dp"
+                             android:backgroundTint="?attr/colorPrimaryDark"
+                             app:iconTint="?attr/colorAccent"
+                             android:textColor="?attr/colorOnPrimary"
+                             android:textStyle="bold"
+                             android:id="@+id/vpn_button" />
+
+                        <com.google.android.material.progressindicator.CircularProgressIndicator
+                             android:id="@+id/vpn_button_progress"
+                             android:layout_height="24dp"
+                             android:layout_width="24dp"
+                             android:layout_gravity="center"
+                             android:indeterminate="true"
+                             android:visibility="gone"
+                             app:indicatorColor="?attr/colorAccent"
+                             app:trackColor="@android:color/transparent"
+                             app:indicatorSize="24dp"
+                             app:trackThickness="3dp" />
+                    </FrameLayout>
 
                     <com.google.android.material.button.MaterialButton
                          android:layout_height="60dp"

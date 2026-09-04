@@ -7,12 +7,14 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.graphics.Color;
-import android.util.TypedValue;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -35,6 +37,7 @@ public class ServerselectionActivity extends AppCompatActivity implements Server
     private RecyclerView serversRecyclerView;
     private MaterialButton addCustomServerButton;
     private MaterialButton importFromClipboardButton;
+    private TextView protocolBanner;
     private List<DnsServer> serverList = new ArrayList<>();
     private List<DnsServer> customServers = new ArrayList<>();
     private SharedPreferences prefs;
@@ -42,20 +45,18 @@ public class ServerselectionActivity extends AppCompatActivity implements Server
     private ServerAdapter adapter;
     private ExecutorService executorService;
     private Handler mainHandler;
+    private DnsProtocol currentProtocol = DnsProtocol.UDP;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = getSharedPreferences("vpn_prefs", Context.MODE_PRIVATE);
-        boolean isGrayTheme = prefs.getBoolean("gray_theme", false);
-
-        if (isGrayTheme) {
-            setTheme(R.style.AppTheme_GrayMaterial);
-        } else {
-            setTheme(R.style.AppTheme);
-        }
-
+        ThemeManager.applyTheme(this);
         setContentView(R.layout.activity_server_selection);
+
+        String protoExtra = getIntent() != null ? getIntent().getStringExtra("protocol") : null;
+        if (protoExtra == null) protoExtra = prefs.getString("dns_protocol", "UDP");
+        currentProtocol = DnsProtocol.from(protoExtra);
 
         boolean isEnglish = prefs.getBoolean("english_language", false);
 
@@ -63,39 +64,51 @@ public class ServerselectionActivity extends AppCompatActivity implements Server
         serversRecyclerView = findViewById(R.id.servers_recyclerview);
         addCustomServerButton = findViewById(R.id.add_custom_server_button);
         importFromClipboardButton = findViewById(R.id.import_from_clipboard_button);
+        protocolBanner = findViewById(R.id.protocol_banner);
 
         executorService = Executors.newFixedThreadPool(5);
         mainHandler = new Handler(getMainLooper());
 
-        swipeRefreshLayout.setOnRefreshListener(this::checkAllServersPing);
+        swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                checkAllServersPing();
+            }
+        });
 
-        addCustomServerButton.setText(isEnglish ? "Add Custom DNS" : "افزودن DNS سفارشی");
-        importFromClipboardButton.setText(isEnglish ? "Import from Clipboard" : "افزودن از کلیپ‌بورد");
+        addCustomServerButton.setContentDescription(isEnglish ? "Add custom DNS" : "افزودن DNS سفارشی");
+        importFromClipboardButton.setContentDescription(isEnglish ? "Import from clipboard" : "افزودن از کلیپ‌بورد");
+        if (protocolBanner != null) {
+            protocolBanner.setText(isEnglish
+                    ? (currentProtocol.label + " servers")
+                    : ("سرورهای " + currentProtocol.label));
+        }
 
-        importFromClipboardButton.setOnClickListener(v -> importFromClipboard());
-        addCustomServerButton.setOnClickListener(v -> showAddCustomServerDialog());
-        
+        importFromClipboardButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) { importFromClipboard(); }
+        });
+        addCustomServerButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) { showAddCustomServerDialog(); }
+        });
+
         serversRecyclerView.setHorizontalScrollBarEnabled(false);
         serversRecyclerView.setVerticalScrollBarEnabled(false);
-        
+
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle(isEnglish ? "Select DNS Server" : "انتخاب سرور DNS");
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
-                
+
         TypedValue typedValue = new TypedValue();
         getTheme().resolveAttribute(android.R.attr.colorAccent, typedValue, true);
         int colorAccent = typedValue.data;
-
         getTheme().resolveAttribute(android.R.attr.colorPrimary, typedValue, true);
         int colorPrimary = typedValue.data;
-
-        getTheme().resolveAttribute(android.R.attr.colorPrimary, typedValue, true);
-        int colorPrimaryDark = typedValue.data;
-
         swipeRefreshLayout.setColorSchemeColors(colorAccent, colorPrimary);
-        swipeRefreshLayout.setProgressBackgroundColorSchemeColor(colorPrimaryDark);
-        
+        swipeRefreshLayout.setProgressBackgroundColorSchemeColor(colorPrimary);
+
         loadCustomServers();
         setupServerList();
         handleDeepLinkIntent(getIntent());
@@ -113,128 +126,123 @@ public class ServerselectionActivity extends AppCompatActivity implements Server
         if (json != null) {
             Type type = new TypeToken<List<DnsServer>>() {}.getType();
             customServers = new Gson().fromJson(json, type);
+            if (customServers == null) customServers = new ArrayList<>();
         } else {
             customServers = new ArrayList<>();
         }
     }
 
     private void saveCustomServers() {
-        String json = new Gson().toJson(customServers);
-        prefs.edit().putString(CUSTOM_SERVERS_KEY, json).apply();
+        prefs.edit().putString(CUSTOM_SERVERS_KEY, new Gson().toJson(customServers)).apply();
     }
 
     private void setupServerList() {
         serverList.clear();
-        serverList.add(new DnsServer("Google IPv4", "8.8.8.8", "8.8.4.4", "", ""));
-        serverList.add(new DnsServer("Electro IPv4", "78.157.42.101", "78.157.42.100", "", ""));
-        serverList.add(new DnsServer("Radar IPv4", "10.202.10.10", "10.202.10.11", "", ""));
-        serverList.add(new DnsServer("Comodo IPv4", "8.26.56.26", "8.20.247.20", "", ""));
-        serverList.add(new DnsServer("NTT IPv4", "129.250.35.250", "129.250.35.251", "", ""));
-        serverList.add(new DnsServer("DYN IPv4", "216.146.35.35", "216.146.36.36", "", ""));
-        serverList.add(new DnsServer("Us Open IPv4", "208.67.222.220", "208.67.220.222", "", ""));
-        serverList.add(new DnsServer("Yandex IPv4", "77.88.8.1", "77.88.8.8", "", ""));
-        serverList.add(new DnsServer("Ad Guard IPv4", "94.140.14.14", "94.140.15.15", "", ""));
-        serverList.add(new DnsServer("Censurfri IPv4", "89.233.43.71", "91.239.100.100", "", ""));
-        serverList.add(new DnsServer("Beshkan IPv4", "181.41.194.177", "181.41.194.186", "", ""));
-        serverList.add(new DnsServer("DC Custom IPv4", "1.1.1.1", "77.88.8.8", "", ""));
-        serverList.add(new DnsServer("Clean IPv6", "185.228.168.9", "185.228.169.9", "2a0d:2a00:1::2", "2a0d:2a00:2::2"));
-        serverList.add(new DnsServer("Pubg IPv6", "156.154.70.1", "156.154.71.1", "2620:115:53::53", "2620:115:35::35"));
-        serverList.add(new DnsServer("Google IPv6", "8.8.8.8", "8.8.4.4", "2001:4860:4860::8888", "2001:4860:4860::8844"));
-        serverList.add(new DnsServer("Cloudflare IPv6", "1.1.1.1", "1.0.0.1", "2606:4700:4700::1111", "2606:4700:4700::1001"));
-        serverList.addAll(customServers);
-
+        serverList.addAll(DnsCatalog.builtins(currentProtocol));
+        for (DnsServer custom : customServers) {
+            if (custom != null && custom.getProtocolEnum() == currentProtocol) {
+                serverList.add(custom);
+            }
+        }
         if (adapter == null) {
-            adapter = new ServerAdapter(this, serverList, this, this::showDeleteDialog);
+            adapter = new ServerAdapter(this, serverList, this, new ServerAdapter.ServerLongClickListener() {
+                @Override
+                public void onLongClick(DnsServer server) {
+                    showDeleteDialog(server);
+                }
+            });
             serversRecyclerView.setLayoutManager(new LinearLayoutManager(this));
             serversRecyclerView.setAdapter(adapter);
         } else {
-            adapter.updateServerList(new ArrayList<>(serverList));
+            adapter.updateServerList(new ArrayList<DnsServer>(serverList));
         }
     }
 
     private void checkAllServersPing() {
-        for (DnsServer server : serverList) {
-            server.setPing(-1);
-        }
+        for (DnsServer server : serverList) server.setPing(-1);
         adapter.notifyDataSetChanged();
-
-        for (DnsServer server : serverList) {
-            executorService.execute(() -> checkServerPing(server));
+        for (final DnsServer server : serverList) {
+            executorService.execute(new Runnable() {
+                @Override
+                public void run() { checkServerPing(server); }
+            });
         }
     }
 
     private void checkServerPing(DnsServer server) {
         String dns = server.getDns1();
-        if (dns.isEmpty()) {
+        boolean hasEndpointWithoutIp =
+                (server.getProtocolEnum() == DnsProtocol.DOH && !server.getDohUrl().isEmpty())
+                || (server.getProtocolEnum() == DnsProtocol.DOT && !server.getHostname().isEmpty());
+
+        if ((dns == null || dns.isEmpty()) && !hasEndpointWithoutIp) {
             updateServerPing(server, -2);
             return;
         }
-
         int pingValue = -2;
-        
         try {
-            Process process = Runtime.getRuntime().exec("ping -c 1 -W 2 " + dns);
-            int resultCode = process.waitFor();
-            java.io.InputStream inputStream = process.getInputStream();
-            java.util.Scanner s = new java.util.Scanner(inputStream).useDelimiter("\\A");
-            String output = s.hasNext() ? s.next() : "";
-
-            if (resultCode == 0 && output.contains("time=")) {
-                int index = output.indexOf("time=");
-                int end = output.indexOf(" ms", index);
-                if (index > 0 && end > index) {
-                    String timeText = output.substring(index + 5, end);
-                    pingValue = (int) Float.parseFloat(timeText);
-                }
-            }
+            DnsQueryEngine engine = new DnsQueryEngine(null, getApplicationContext(),
+                    server.getProtocolEnum(), server.getDns1(), server.getDns2(),
+                    server.getHostname(), server.getDohUrl(), server.getPort());
+            pingValue = engine.measureLatencyMs();
         } catch (Exception e) {
-            LogHelper.log(getApplicationContext(), "ICMP ping failed: " + e.getMessage());
+            pingValue = -2;
         }
-
-        if (pingValue == -2) {
-            try {
-                long startTime = System.currentTimeMillis();
-                java.net.Socket socket = new java.net.Socket();
-                socket.connect(new java.net.InetSocketAddress(dns, 53), 2000);
-                socket.close();
-                pingValue = (int) (System.currentTimeMillis() - startTime);
-            } catch (Exception e) {
-                pingValue = -2;
-            }
+        if (pingValue < 0 && HostValidator.isSafeHost(server.getDns1())) {
+            pingValue = fallbackPing(server.getDns1(), server.getPort());
         }
-
         updateServerPing(server, pingValue);
     }
 
-    private void updateServerPing(DnsServer server, int pingValue) {
-        mainHandler.post(() -> {
-            for (DnsServer s : serverList) {
-                if (s.getName().equals(server.getName()) && s.getDns1().equals(server.getDns1())) {
-                    s.setPing(pingValue);
-                    break;
+    private int fallbackPing(String dns, int port) {
+        try {
+            long startTime = System.currentTimeMillis();
+            java.net.Socket socket = new java.net.Socket();
+            socket.connect(new java.net.InetSocketAddress(dns, port > 0 ? port : 53), 2000);
+            socket.close();
+            return (int) (System.currentTimeMillis() - startTime);
+        } catch (Exception e) {
+            return -2;
+        }
+    }
+
+    private void updateServerPing(final DnsServer server, final int pingValue) {
+        mainHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                for (DnsServer s : serverList) {
+                    if (s.getName().equals(server.getName()) && s.getDns1().equals(server.getDns1())) {
+                        s.setPing(pingValue);
+                        break;
+                    }
                 }
+                adapter.notifyDataSetChanged();
+                swipeRefreshLayout.setRefreshing(false);
             }
-            adapter.notifyDataSetChanged();
-            swipeRefreshLayout.setRefreshing(false);
         });
     }
 
     private void handleDeepLinkIntent(Intent intent) {
         if (intent == null || intent.getData() == null) return;
-
         Uri data = intent.getData();
         if (!"dnschanger".equals(data.getScheme()) || !"add".equals(data.getHost())) return;
-
         String name = data.getQueryParameter("name");
         String dns1 = data.getQueryParameter("dns1");
         String dns2 = data.getQueryParameter("dns2");
         String ipv6dns1 = data.getQueryParameter("ipv6dns1");
         String ipv6dns2 = data.getQueryParameter("ipv6dns2");
-
-        if (name != null && dns1 != null) {
-            showAddCustomServerDialog(name, dns1, dns2, ipv6dns1, ipv6dns2);
+        String proto = data.getQueryParameter("protocol");
+        String host = data.getQueryParameter("hostname");
+        String url = data.getQueryParameter("doh");
+        String port = data.getQueryParameter("port");
+        if (name != null && (dns1 != null || url != null)) {
+            if (proto != null) currentProtocol = DnsProtocol.from(proto);
+            showAddCustomServerDialog(name, n(dns1), n(dns2), n(ipv6dns1), n(ipv6dns2),
+                    n(host), n(url), port);
         }
     }
+
+    private String n(String s) { return s == null ? "" : s; }
 
     private void importFromClipboard() {
         boolean isEnglish = prefs.getBoolean("english_language", false);
@@ -250,30 +258,63 @@ public class ServerselectionActivity extends AppCompatActivity implements Server
                     showToast(isEnglish ? "Invalid link" : "لینک نامعتبر است");
                 }
             } else {
-                showToast(isEnglish ? "Clipboard does not contain a DNSChanger link" : "لینک مربوط به DNSChanger در کلیپ‌بورد یافت نشد");
+                showToast(isEnglish ? "Clipboard does not contain a DNSChanger link"
+                        : "لینک مربوط به DNSChanger در کلیپ‌بورد یافت نشد");
             }
         }
     }
 
     private void showAddCustomServerDialog() {
-        showAddCustomServerDialog("", "", "", "", "");
+        showAddCustomServerDialog("", "", "", "", "", "", "", "");
     }
 
-    private void showAddCustomServerDialog(String name, String dns1, String dns2, String ipv6dns1, String ipv6dns2) {
-        boolean isEnglish = prefs.getBoolean("english_language", false);
+    private void showAddCustomServerDialog(String name, String dns1, String dns2, String ipv6dns1, String ipv6dns2,
+                                           String hostname, String dohUrl, String port) {
+        final boolean isEnglish = prefs.getBoolean("english_language", false);
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_server, null);
 
-        TextInputEditText nameEdit = dialogView.findViewById(R.id.server_name_edittext);
-        TextInputEditText dns1Edit = dialogView.findViewById(R.id.dns1_edittext);
-        TextInputEditText dns2Edit = dialogView.findViewById(R.id.dns2_edittext);
-        TextInputEditText ipv6Dns1Edit = dialogView.findViewById(R.id.ipv6_dns1_edittext);
-        TextInputEditText ipv6Dns2Edit = dialogView.findViewById(R.id.ipv6_dns2_edittext);
+        final TextInputEditText nameEdit = dialogView.findViewById(R.id.server_name_edittext);
+        final TextInputEditText dns1Edit = dialogView.findViewById(R.id.dns1_edittext);
+        final TextInputEditText dns2Edit = dialogView.findViewById(R.id.dns2_edittext);
+        final TextInputEditText ipv6Dns1Edit = dialogView.findViewById(R.id.ipv6_dns1_edittext);
+        final TextInputEditText ipv6Dns2Edit = dialogView.findViewById(R.id.ipv6_dns2_edittext);
+        final TextInputEditText hostEdit = dialogView.findViewById(R.id.hostname_edittext);
+        final TextInputEditText urlEdit = dialogView.findViewById(R.id.doh_url_edittext);
+        final TextInputEditText portEdit = dialogView.findViewById(R.id.port_edittext);
+        final Spinner protoSpinner = dialogView.findViewById(R.id.protocol_spinner);
 
         nameEdit.setText(name);
         dns1Edit.setText(dns1);
         dns2Edit.setText(dns2);
         ipv6Dns1Edit.setText(ipv6dns1);
         ipv6Dns2Edit.setText(ipv6dns2);
+        if (hostEdit != null) hostEdit.setText(hostname);
+        if (urlEdit != null) urlEdit.setText(dohUrl);
+        if (portEdit != null) portEdit.setText(port == null || port.isEmpty() ? String.valueOf(currentProtocol.defaultPort) : port);
+
+        final DnsProtocol[] protocols = new DnsProtocol[]{DnsProtocol.UDP, DnsProtocol.TCP, DnsProtocol.DOT, DnsProtocol.DOH};
+        if (protoSpinner != null) {
+            ArrayAdapter<String> spinAdapter = new ArrayAdapter<>(this,
+                    android.R.layout.simple_spinner_dropdown_item,
+                    new String[]{"UDP", "TCP", "DoT", "DoH"});
+            protoSpinner.setAdapter(spinAdapter);
+            int idx = 0;
+            for (int i = 0; i < protocols.length; i++) {
+                if (protocols[i] == currentProtocol) idx = i;
+            }
+            protoSpinner.setSelection(idx);
+            protoSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    DnsProtocol p = protocols[position];
+                    if (hostEdit != null) hostEdit.setVisibility(p == DnsProtocol.DOT ? View.VISIBLE : View.GONE);
+                    if (urlEdit != null) urlEdit.setVisibility(p == DnsProtocol.DOH ? View.VISIBLE : View.GONE);
+                    if (portEdit != null && (portEdit.getText() == null || portEdit.getText().toString().isEmpty())) {
+                        portEdit.setText(String.valueOf(p.defaultPort));
+                    }
+                }
+                @Override public void onNothingSelected(AdapterView<?> parent) {}
+            });
+        }
 
         AlertDialog dialog = new MaterialAlertDialogBuilder(this, R.style.CustomDialogTheme)
             .setTitle(isEnglish ? "Add Custom Server" : "سرور سفارشی")
@@ -284,70 +325,74 @@ public class ServerselectionActivity extends AppCompatActivity implements Server
                 String dns2Value = dns2Edit.getText().toString().trim();
                 String ipv6_1 = ipv6Dns1Edit.getText().toString().trim();
                 String ipv6_2 = ipv6Dns2Edit.getText().toString().trim();
-
-                if (serverName.isEmpty() || dns1Value.isEmpty()) {
-                    showToast(isEnglish ? "Please enter server name and primary DNS" : "لطفاً نام سرور و DNS اول را وارد کنید");
-                    return;
-                }
-
-                boolean isDuplicate = false;
-                for (DnsServer server : serverList) {
-                    if (server.getDns1().equals(dns1Value)) {
-                        isDuplicate = true;
-                        break;
+                DnsProtocol chosen = currentProtocol;
+                if (protoSpinner != null) chosen = protocols[protoSpinner.getSelectedItemPosition()];
+                String hostVal = hostEdit != null ? hostEdit.getText().toString().trim() : "";
+                String urlVal = urlEdit != null ? urlEdit.getText().toString().trim() : "";
+                int portVal = chosen.defaultPort;
+                try {
+                    if (portEdit != null && portEdit.getText() != null && portEdit.getText().length() > 0) {
+                        portVal = Integer.parseInt(portEdit.getText().toString().trim());
                     }
-                }
+                } catch (Exception ignored) {}
 
-                if (isDuplicate) {
-                    showToast(isEnglish ? "This DNS server already exists" : "این سرور DNS قبلاً اضافه شده است");
+                if (serverName.isEmpty() || (dns1Value.isEmpty() && urlVal.isEmpty())) {
+                    showToast(isEnglish ? "Please enter server name and endpoint" : "لطفاً نام سرور و آدرس را وارد کنید");
                     return;
                 }
 
-                DnsServer newServer = new DnsServer(serverName, dns1Value, dns2Value, ipv6_1, ipv6_2);
+                DnsServer newServer = new DnsServer(serverName, dns1Value, dns2Value, ipv6_1, ipv6_2,
+                        chosen.name(), hostVal, urlVal, portVal);
                 customServers.add(newServer);
                 saveCustomServers();
-                serverList.add(newServer);
-                
-                if (adapter != null) {
-                    adapter.notifyItemInserted(serverList.size() - 1);
+                if (chosen == currentProtocol) {
+                    serverList.add(newServer);
+                    if (adapter != null) adapter.notifyItemInserted(serverList.size() - 1);
+                    executorService.execute(new Runnable() {
+                        @Override public void run() { checkServerPing(newServer); }
+                    });
                 }
-                
-                executorService.execute(() -> checkServerPing(newServer));
             })
             .setNegativeButton(isEnglish ? "Cancel" : "انصراف", null)
             .create();
-        
         dialog.show();
         styleDialogButtons(dialog);
     }
 
-    private void showDeleteDialog(DnsServer server) {
+    private void showDeleteDialog(final DnsServer server) {
         boolean isEnglish = prefs.getBoolean("english_language", false);
-
-        if (!customServers.contains(server)) {
+        boolean isCustom = false;
+        for (DnsServer c : customServers) {
+            if (c.getName().equals(server.getName()) && c.getDns1().equals(server.getDns1())) {
+                isCustom = true;
+                break;
+            }
+        }
+        if (!isCustom) {
             showToast(isEnglish ? "Cannot delete default server" : "نمی‌توان سرور پیش‌فرض را حذف کرد");
             return;
         }
-
         AlertDialog dialog = new MaterialAlertDialogBuilder(this, R.style.CustomDialogTheme)
             .setTitle(isEnglish ? "Delete Server?" : "حذف سرور؟")
             .setMessage(isEnglish ? "Are you sure you want to delete this server?" : "آیا مطمئن هستید که می‌خواهید این سرور را حذف کنید؟")
             .setPositiveButton(isEnglish ? "Delete" : "حذف", (dialog1, which) -> {
                 int position = serverList.indexOf(server);
-                if (position != -1) {
-                    customServers.remove(server);
-                    saveCustomServers();
-                    serverList.remove(position);
-                    
-                    if (adapter != null) {
-                        adapter.notifyItemRemoved(position);
+                customServers.remove(server);
+                for (int i = customServers.size() - 1; i >= 0; i--) {
+                    DnsServer c = customServers.get(i);
+                    if (c.getName().equals(server.getName()) && c.getDns1().equals(server.getDns1())) {
+                        customServers.remove(i);
                     }
+                }
+                saveCustomServers();
+                if (position != -1) {
+                    serverList.remove(position);
+                    if (adapter != null) adapter.notifyItemRemoved(position);
                 }
                 showToast(isEnglish ? "Server deleted" : "سرور حذف شد");
             })
             .setNegativeButton(isEnglish ? "Cancel" : "لغو", null)
             .create();
-        
         dialog.show();
         styleDialogButtons(dialog);
     }
@@ -356,16 +401,10 @@ public class ServerselectionActivity extends AppCompatActivity implements Server
         TypedValue typedValue = new TypedValue();
         getTheme().resolveAttribute(android.R.attr.colorAccent, typedValue, true);
         int textColor = typedValue.data;
-        
-        if (dialog.getButton(AlertDialog.BUTTON_POSITIVE) != null) {
+        if (dialog.getButton(AlertDialog.BUTTON_POSITIVE) != null)
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(textColor);
-        }
-        if (dialog.getButton(AlertDialog.BUTTON_NEGATIVE) != null) {
+        if (dialog.getButton(AlertDialog.BUTTON_NEGATIVE) != null)
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(textColor);
-        }
-        if (dialog.getButton(AlertDialog.BUTTON_NEUTRAL) != null) {
-            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(textColor);
-        }
     }
 
     @Override
@@ -375,6 +414,10 @@ public class ServerselectionActivity extends AppCompatActivity implements Server
         resultIntent.putExtra("dns2", server.getDns2());
         resultIntent.putExtra("ipv6_dns1", server.getIpv6Dns1());
         resultIntent.putExtra("ipv6_dns2", server.getIpv6Dns2());
+        resultIntent.putExtra("protocol", server.getProtocol());
+        resultIntent.putExtra("hostname", server.getHostname());
+        resultIntent.putExtra("doh_url", server.getDohUrl());
+        resultIntent.putExtra("dns_port", server.getPort());
         setResult(RESULT_OK, resultIntent);
         finish();
     }

@@ -1,64 +1,69 @@
 package dns.changer.deepcode;
 
-import android.app.ActivityManager;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
+import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.net.VpnService;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.provider.Settings;
 import android.text.TextUtils;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import android.graphics.Color;
-import androidx.core.content.ContextCompat;
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import android.content.pm.PackageManager;
-import android.Manifest;
-import android.provider.Settings;
 import android.widget.TextSwitcher;
 import android.widget.ViewSwitcher;
-import android.view.Gravity;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.progressindicator.CircularProgressIndicator;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
-import java.util.Random;
 
 public class DnschangerActivity extends AppCompatActivity {
 
-    private static final int VPN_REQUEST_CODE = 100;
     private static final int NOTIFICATION_PERMISSION_CODE = 101;
     private static final int VPN_PERMISSION_REQUEST_CODE = 102;
-    private static final int PING_INTERVAL = 500;
-    private static final int REQUEST_CODE_SPECIAL_USE_PERMISSION = 1001;
+    private static final int SERVER_PICK_CODE = 1;
+    private static final int PING_INTERVAL = 4000;
     private static final int HINT_SLIDE_INTERVAL = 8000;
 
     private TextInputEditText dns1EditText, dns2EditText, ipv6Dns1EditText, ipv6Dns2EditText;
+    private TextInputEditText hostnameEditText, dohUrlEditText, portEditText;
     private TextInputLayout dns1Layout, dns2Layout, ipv6Dns1Layout, ipv6Dns2Layout;
+    private TextInputLayout hostnameLayout, dohUrlLayout, portLayout;
     private MaterialButton vpnButton, selectServerButton;
-    private TextView pingTextView;
-    private ImageView logoImage, settingsImage, nettest;
+    private CircularProgressIndicator vpnButtonProgress;
+    private static final int CONNECT_TIMEOUT_MS = 15000;
+    private Runnable connectTimeoutRunnable;
+    private MaterialButtonToggleGroup protocolGroup;
+    private TextView pingTextView, protocolSubtitle, configTitle, connectionTitle;
+    private ImageView logoImage, settingsImage;
     private boolean vpnActive = false;
     private boolean isRootMode = false;
     private SharedPreferences prefs;
     private Handler pingHandler = new Handler();
     private Runnable pingRunnable;
     private boolean isReceiverRegistered = false;
+    private boolean connecting = false;
 
     private TextSwitcher textHintSwitcher;
     private Handler hintHandler = new Handler();
     private Runnable hintRunnable;
     private int currentHintIndex = 0;
+    private DnsProtocol currentProtocol = DnsProtocol.UDP;
 
     private final String[] hintsFa = {
         "آیا می‌دانستید با دی‌سی می‌توانید به راحتی سرورهایی که خودتان وارد کرده‌اید را به اشتراک بگذارید؟ این قابلیت فقط مال دی‌سیه!",
@@ -66,7 +71,7 @@ public class DnschangerActivity extends AppCompatActivity {
         "دی‌سی چنجر به هیچ عنوان داده‌های شخصی شما را ذخیره نکرده و حریم خصوصی شما کاملاً امن است.",
         "سرویس دی ان اس shekan یک اشغاله بیخیالش بشید (:",
         "دی سی قرار بود فقط برای پابجی باشه اما الان بهترین سرویس برای همه بازی هاست (:",
-        "ایا میدونستید با سرویس TCP میتونید با برخی اوپراتور ها در برخی مناطق تحریم یوتیوب رو بشکنید؟"
+        "با DoT و DoH ترافیک DNS شما رمزنگاری می‌شود و از دست ISP در امان است."
     };
 
     private final String[] hintsEn = {
@@ -75,31 +80,40 @@ public class DnschangerActivity extends AppCompatActivity {
         "DC Changer never stores your personal data and your privacy is completely secure.",
         "Shekan DNS service is a mess, don't worry about it (:",
         "DC was supposed to be just for PUBG, but now it's the best service for all games (:",
-        "Did you know that you can use TCP service to break the YouTube embargo with some operators in some regions?"
-        
+        "DoT and DoH encrypt your DNS so your ISP cannot snoop queries."
+
     };
 
     private BroadcastReceiver vpnStateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if ("VPN_STATE_CHANGED".equals(intent.getAction())) {
+            if (MyVpnService.ACTION_STATE.equals(intent.getAction())) {
                 boolean newState = intent.getBooleanExtra("isActive", false);
                 vpnActive = newState;
+                connecting = false;
+                cancelConnectTimeout();
                 prefs.edit().putBoolean("vpn_active", vpnActive).apply();
-                
-                runOnUiThread(() -> {
-                    updateButton();
-                    if (vpnActive) {
-                        startLivePingUpdates();
-                    } else {
-                        stopLivePingUpdates();
+                final String error = intent.getStringExtra("error");
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        setButtonLoading(false);
+                        updateButton();
+                        if (vpnActive) {
+                            startLivePingUpdates();
+                            if ("connected_degraded".equals(error)) {
+                                showCustomToast(isEn() ? "Connected, DNS is slow to answer" : "متصل شد، پاسخ DNS کند است", R.drawable.ic_info);
+                            } else {
+                                showCustomToast(isEn() ? "Connected successfully" : "اتصال با موفقیت برقرار شد", R.drawable.ic_check);
+                            }
+                        } else {
+                            stopLivePingUpdates();
+                            if (error != null && !"connected_degraded".equals(error)) {
+                                showCustomToast(error, R.drawable.ic_error);
+                            }
+                        }
                     }
                 });
-                
-                if (intent.hasExtra("error")) {
-                    String errorMessage = intent.getStringExtra("error");
-                    showErrorAndDisconnect(errorMessage);
-                }
             }
         }
     };
@@ -108,140 +122,177 @@ public class DnschangerActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = getSharedPreferences("vpn_prefs", Context.MODE_PRIVATE);
-        boolean isGrayTheme = prefs.getBoolean("gray_theme", false);
-
-        if (isGrayTheme) {
-            setTheme(R.style.AppTheme_GrayMaterial);
-        } else {
-            setTheme(R.style.AppTheme);
-        }
-       
+        ThemeManager.applyTheme(this);
         setContentView(R.layout.change);
         LogHelper.log(getApplicationContext(), "Activity created");
-        prefs = getSharedPreferences("vpn_prefs", Context.MODE_PRIVATE);
         isRootMode = prefs.getBoolean("root_mode", false);
-        LogHelper.log(getApplicationContext(), "Root mode: " + isRootMode);
-        
+        currentProtocol = DnsProtocol.from(prefs.getString("dns_protocol",
+                prefs.getBoolean("dns_over_tcp", false) ? "TCP" : "UDP"));
+
         if (isRootMode) {
             String savedDns1 = prefs.getString("dns1", "");
-            vpnActive = prefs.getBoolean("vpn_active", false) && 
-                       !savedDns1.isEmpty() && 
-                       RootCommands.isDnsChanged(savedDns1);
-            LogHelper.log(getApplicationContext(), "Root mode active state: " + vpnActive);
+            vpnActive = prefs.getBoolean("vpn_active", false)
+                    && !savedDns1.isEmpty()
+                    && RootCommands.isDnsChanged(savedDns1);
         } else {
-            vpnActive = prefs.getBoolean("vpn_active", false) && 
-                       MyVpnService.isRunning(this);
-            LogHelper.log(getApplicationContext(), "VPN mode active state: " + vpnActive);
+            vpnActive = prefs.getBoolean("vpn_active", false) && MyVpnService.isRunning(this);
         }
-        
+
         initializeViews();
         setupTextSwitcher();
         loadSavedPreferences();
+        applyProtocolUi(currentProtocol, false);
         setupButtonListeners();
         updateUIForLanguage();
         updateButton();
-        
+
         pingRunnable = new Runnable() {
             @Override
             public void run() {
-                if (vpnActive) {
-                    performPingCheck();
-                }
+                if (vpnActive) performPingCheck();
                 pingHandler.postDelayed(this, PING_INTERVAL);
             }
         };
     }
 
+    private boolean isEn() {
+        return prefs.getBoolean("english_language", false);
+    }
+
     private void startLivePingUpdates() {
-        LogHelper.log(getApplicationContext(), "Starting live ping updates");
-    
-        runOnUiThread(() -> {
-            boolean isEnglish = prefs.getBoolean("english_language", false);
-            pingTextView.setText(isEnglish ? "Ping: Checking..." : "پینگ: در حال بررسی...");
-            pingTextView.setTextColor(Color.parseColor("#EEEEEE"));
-        });
-    
-        pingHandler.postDelayed(pingRunnable, PING_INTERVAL);
+        pingHandler.removeCallbacks(pingRunnable);
+        pingTextView.setText(isEn() ? "Ping: Checking..." : "پینگ: در حال بررسی...");
+        pingTextView.setTextColor(ThemeManager.getDefaultTextColor(this));
+        pingHandler.postDelayed(pingRunnable, 400);
     }
 
     private void stopLivePingUpdates() {
-        LogHelper.log(getApplicationContext(), "Stopping live ping updates");
         pingHandler.removeCallbacks(pingRunnable);
-        boolean isEnglish = prefs.getBoolean("english_language", false);
-        pingTextView.setText(isEnglish ? "Status: Not connected" : "وضعیت: متصل نیست");
-        pingTextView.setTextColor(Color.parseColor("#EEEEEE"));
+        pingTextView.setText(isEn() ? "Status: Not connected" : "وضعیت: متصل نیست");
+        pingTextView.setTextColor(ThemeManager.getDefaultTextColor(this));
     }
 
     private void updateUIForLanguage() {
-        boolean isEnglish = prefs.getBoolean("english_language", false);
-        LogHelper.log(getApplicationContext(), "Updating UI for language: " + (isEnglish ? "English" : "Persian"));
-        
-        pingTextView.setText(vpnActive ? 
-            (isEnglish ? "Status: Connected" : "وضعیت: متصل") : 
-            (isEnglish ? "Status: Not connected" : "وضعیت: متصل نیست"));
-            
-        vpnButton.setText(isEnglish ? 
-            (isRootMode ? (vpnActive ? "Restore DNS" : "Change DNS") : (vpnActive ? "Disable DNS" : "Enable DNS")) : 
-            (isRootMode ? (vpnActive ? "بازگردانی DNS" : "تغییر DNS") : (vpnActive ? "قطع DNS" : "فعال کردن DNS")));
-            
-        selectServerButton.setText(isEnglish ? "Select Recommended Server" : "انتخاب سرور پیشنهادی");
-        
-        dns1Layout.setHint(isEnglish ? "Primary DNS" : "DNS اول");
-        dns2Layout.setHint(isEnglish ? "Secondary DNS (Optional)" : "DNS دوم (اختیاری)");
-        ipv6Dns1Layout.setHint(isEnglish ? "IPv6 Primary DNS" : "DNS اول IPv6");
-        ipv6Dns2Layout.setHint(isEnglish ? "IPv6 Secondary DNS" : "DNS دوم IPv6");
-
+        pingTextView.setText(vpnActive
+                ? (isEn() ? "Status: Connected" : "وضعیت: متصل")
+                : (isEn() ? "Status: Not connected" : "وضعیت: متصل نیست"));
+        selectServerButton.setText(isEn() ? "Select recommended server" : "انتخاب سرور پیشنهادی");
+        if (configTitle != null) configTitle.setText(isEn() ? "DNS Configuration" : "پیکربندی DNS");
+        if (connectionTitle != null) connectionTitle.setText(isEn() ? "Connection" : "اتصال");
+        applyProtocolUi(currentProtocol, false);
         showCurrentHint();
     }
 
     private void initializeViews() {
-        LogHelper.log(getApplicationContext(), "Initializing views");
         dns1EditText = findViewById(R.id.dns1_edittext);
         dns2EditText = findViewById(R.id.dns2_edittext);
         ipv6Dns1EditText = findViewById(R.id.ipv6_dns1_edittext);
         ipv6Dns2EditText = findViewById(R.id.ipv6_dns2_edittext);
-        
+        hostnameEditText = findViewById(R.id.hostname_edittext);
+        dohUrlEditText = findViewById(R.id.doh_url_edittext);
+        portEditText = findViewById(R.id.port_edittext);
+
         dns1Layout = findViewById(R.id.dns1_layout);
         dns2Layout = findViewById(R.id.dns2_layout);
         ipv6Dns1Layout = findViewById(R.id.ipv6_dns1_layout);
         ipv6Dns2Layout = findViewById(R.id.ipv6_dns2_layout);
-        
+        hostnameLayout = findViewById(R.id.hostname_layout);
+        dohUrlLayout = findViewById(R.id.doh_url_layout);
+        portLayout = findViewById(R.id.port_layout);
+
         vpnButton = findViewById(R.id.vpn_button);
+        vpnButtonProgress = findViewById(R.id.vpn_button_progress);
         selectServerButton = findViewById(R.id.select_server_button);
         settingsImage = findViewById(R.id.settingsimage);
-        nettest = findViewById(R.id.nettest);
         pingTextView = findViewById(R.id.ping_textview);
         logoImage = findViewById(R.id.logo_image);
-        
         textHintSwitcher = findViewById(R.id.text_hint_switcher);
+        protocolGroup = findViewById(R.id.protocol_group);
+        protocolSubtitle = findViewById(R.id.protocol_subtitle);
+        configTitle = findViewById(R.id.config_title);
+        connectionTitle = findViewById(R.id.connection_title);
+    }
+
+    private void applyProtocolUi(DnsProtocol protocol, boolean persist) {
+        currentProtocol = protocol;
+        if (persist) {
+            prefs.edit()
+                    .putString("dns_protocol", protocol.name())
+                    .putBoolean("dns_over_tcp", protocol == DnsProtocol.TCP)
+                    .apply();
+        }
+        if (protocolGroup != null) {
+            int id = R.id.btn_proto_udp;
+            if (protocol == DnsProtocol.TCP) id = R.id.btn_proto_tcp;
+            else if (protocol == DnsProtocol.DOT) id = R.id.btn_proto_dot;
+            else if (protocol == DnsProtocol.DOH) id = R.id.btn_proto_doh;
+            if (protocolGroup.getCheckedButtonId() != id) {
+                protocolGroup.check(id);
+            }
+        }
+
+        boolean udpOrTcp = protocol == DnsProtocol.UDP || protocol == DnsProtocol.TCP;
+        dns2Layout.setVisibility(udpOrTcp ? View.VISIBLE : View.GONE);
+        ipv6Dns1Layout.setVisibility(protocol == DnsProtocol.UDP ? View.VISIBLE : View.GONE);
+        ipv6Dns2Layout.setVisibility(protocol == DnsProtocol.UDP ? View.VISIBLE : View.GONE);
+        hostnameLayout.setVisibility(protocol == DnsProtocol.DOT ? View.VISIBLE : View.GONE);
+        dohUrlLayout.setVisibility(protocol == DnsProtocol.DOH ? View.VISIBLE : View.GONE);
+        portLayout.setVisibility(protocol == DnsProtocol.DOT || protocol == DnsProtocol.TCP ? View.VISIBLE : View.GONE);
+
+        if (isEn()) {
+            dns1Layout.setHint(protocol == DnsProtocol.DOH ? "Bootstrap IP" : "Primary DNS / IP");
+            dns2Layout.setHint("Secondary DNS (Optional)");
+            hostnameLayout.setHint("DoT hostname (SNI)");
+            dohUrlLayout.setHint("DoH URL");
+            portLayout.setHint(protocol == DnsProtocol.DOT ? "DoT port (853)" : "TCP port (53)");
+            ipv6Dns1Layout.setHint("IPv6 Primary DNS");
+            ipv6Dns2Layout.setHint("IPv6 Secondary DNS");
+            if (protocolSubtitle != null) {
+                if (protocol == DnsProtocol.UDP) protocolSubtitle.setText("UDP · classic DNS on port 53");
+                else if (protocol == DnsProtocol.TCP) protocolSubtitle.setText("TCP · DNS over TCP, harder to filter");
+                else if (protocol == DnsProtocol.DOT) protocolSubtitle.setText("DoT · DNS over TLS on port 853");
+                else protocolSubtitle.setText("DoH · DNS over HTTPS, looks like web traffic");
+            }
+        } else {
+            dns1Layout.setHint(protocol == DnsProtocol.DOH ? "آی‌پی بوت‌استرپ" : "DNS / آی‌پی اول");
+            dns2Layout.setHint("DNS دوم (اختیاری)");
+            hostnameLayout.setHint("نام میزبان DoT");
+            dohUrlLayout.setHint("آدرس DoH");
+            portLayout.setHint(protocol == DnsProtocol.DOT ? "پورت DoT (۸۵۳)" : "پورت TCP (۵۳)");
+            ipv6Dns1Layout.setHint("DNS اول IPv6");
+            ipv6Dns2Layout.setHint("DNS دوم IPv6");
+            if (protocolSubtitle != null) {
+                if (protocol == DnsProtocol.UDP) protocolSubtitle.setText("UDP · دی‌ان‌اس کلاسیک روی پورت ۵۳");
+                else if (protocol == DnsProtocol.TCP) protocolSubtitle.setText("TCP · دی‌ان‌اس روی TCP، سخت‌تر فیلتر می‌شود");
+                else if (protocol == DnsProtocol.DOT) protocolSubtitle.setText("DoT · دی‌ان‌اس رمزنگاری‌شده روی پورت ۸۵۳");
+                else protocolSubtitle.setText("DoH · دی‌ان‌اس روی HTTPS مثل ترافیک وب");
+            }
+        }
+
+        if (portEditText != null && (portEditText.getText() == null || portEditText.getText().toString().trim().isEmpty())) {
+            portEditText.setText(String.valueOf(protocol.defaultPort));
+        }
     }
 
     private void setupTextSwitcher() {
         if (textHintSwitcher == null) return;
-
         textHintSwitcher.setFactory(new ViewSwitcher.ViewFactory() {
             @Override
             public View makeView() {
                 TextView textView = new TextView(getApplicationContext());
                 textView.setTextSize(14);
-                textView.setTextColor(Color.parseColor("#EEEEEE"));
+                textView.setTextColor(ThemeManager.getDefaultTextColor(DnschangerActivity.this));
                 textView.setGravity(Gravity.CENTER);
                 textView.setLineSpacing(4f, 1.1f);
                 return textView;
             }
         });
-
         hintRunnable = new Runnable() {
             @Override
             public void run() {
-                boolean isEnglish = prefs.getBoolean("english_language", false);
-                String[] currentArray = isEnglish ? hintsEn : hintsFa;
-                
+                String[] currentArray = isEn() ? hintsEn : hintsFa;
                 currentHintIndex++;
-                if (currentHintIndex >= currentArray.length) {
-                    currentHintIndex = 0;
-                }
-                
+                if (currentHintIndex >= currentArray.length) currentHintIndex = 0;
                 textHintSwitcher.setText(currentArray[currentHintIndex]);
                 hintHandler.postDelayed(this, HINT_SLIDE_INTERVAL);
             }
@@ -250,11 +301,8 @@ public class DnschangerActivity extends AppCompatActivity {
 
     private void showCurrentHint() {
         if (textHintSwitcher == null) return;
-        boolean isEnglish = prefs.getBoolean("english_language", false);
-        String[] currentArray = isEnglish ? hintsEn : hintsFa;
-        if (currentHintIndex >= currentArray.length) {
-            currentHintIndex = 0;
-        }
+        String[] currentArray = isEn() ? hintsEn : hintsFa;
+        if (currentHintIndex >= currentArray.length) currentHintIndex = 0;
         textHintSwitcher.setCurrentText(currentArray[currentHintIndex]);
     }
 
@@ -268,81 +316,113 @@ public class DnschangerActivity extends AppCompatActivity {
     }
 
     private void loadSavedPreferences() {
-        LogHelper.log(getApplicationContext(), "Loading saved preferences");
         dns1EditText.setText(prefs.getString("dns1", "78.157.42.101"));
         dns2EditText.setText(prefs.getString("dns2", "78.157.42.100"));
         ipv6Dns1EditText.setText(prefs.getString("ipv6_dns1", ""));
         ipv6Dns2EditText.setText(prefs.getString("ipv6_dns2", ""));
+        if (hostnameEditText != null) hostnameEditText.setText(prefs.getString("dot_hostname", ""));
+        if (dohUrlEditText != null) dohUrlEditText.setText(prefs.getString("doh_url", ""));
+        if (portEditText != null) portEditText.setText(prefs.getString("dns_port", String.valueOf(currentProtocol.defaultPort)));
     }
-    
+
     private void setupButtonListeners() {
-        LogHelper.log(getApplicationContext(), "Setting up button listeners");
-        vpnButton.setOnClickListener(v -> {
-            try {
-                if (!vpnActive) {
-                    LogHelper.log(getApplicationContext(), "VPN button clicked - connect");
-                    if (isRootMode) {
-                        LogHelper.log(getApplicationContext(), "Attempting to change DNS with root");
-                        changeDnsWithRoot();
+        vpnButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try {
+                    if (!vpnActive) {
+                        setButtonLoading(true);
+                        if (isRootMode) changeDnsWithRoot();
+                        else checkAndRequestVpnPermissions();
                     } else {
-                        LogHelper.log(getApplicationContext(), "Checking permissions for VPN");
-                        checkAndRequestVpnPermissions();
+                        setButtonLoading(true);
+                        stopDnsConnection();
                     }
-                } else {
-                    LogHelper.log(getApplicationContext(), "VPN button clicked - disconnect");
-                    stopDnsConnection();
+                    if (!isRootMode) {
+                        scheduleConnectTimeout();
+                    }
+                } catch (Exception e) {
+                    setButtonLoading(false);
+                    showCustomToast(e.getMessage(), R.drawable.ic_error);
                 }
-                
-                runOnUiThread(() -> {
-                    vpnButton.setEnabled(false);
-                    vpnButton.setAlpha(0.7f);
-                });
-                
-                new Handler().postDelayed(() -> {
-                    runOnUiThread(() -> {
-                        vpnButton.setEnabled(true);
-                        vpnButton.setAlpha(1.0f);
-                    });
-                }, 1000);
-            } catch (Exception e) {
-                LogHelper.log(getApplicationContext(), "Error in VPN button click: " + e.getMessage());
-                showErrorAndDisconnect(e.getMessage());
             }
-        });
-        
-        selectServerButton.setOnClickListener(v -> {
-            LogHelper.log(getApplicationContext(), "Select server button clicked");
-            showServerSelectionDialog();
         });
 
-        settingsImage.setOnClickListener(v -> {
-            boolean isEnglish = prefs.getBoolean("english_language", false);
-            if (vpnActive) {
-                LogHelper.log(getApplicationContext(), "Settings clicked but VPN is active");
-                showToast(isEnglish ? "Please disconnect first to change settings" : "لطفاً ابتدا اتصال را قطع کنید");
-            } else {
-                LogHelper.log(getApplicationContext(), "Opening settings activity");
-                startActivity(new Intent(this, SettingsActivity.class));
+        selectServerButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (vpnActive) {
+                    showToast(isEn() ? "Please disconnect first" : "لطفاً ابتدا اتصال را قطع کنید");
+                    return;
+                }
+                persistCurrentFields();
+                Intent intent = new Intent(DnschangerActivity.this, ServerselectionActivity.class);
+                intent.putExtra("protocol", currentProtocol.name());
+                startActivityForResult(intent, SERVER_PICK_CODE);
             }
         });
-        
-        logoImage.setOnClickListener(v -> {
-            Intent intent = new Intent(DnschangerActivity.this, DnsLogActivity.class);
-            startActivity(intent);
+
+        settingsImage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (vpnActive) {
+                    showToast(isEn() ? "Please disconnect first to change settings" : "لطفاً ابتدا اتصال را قطع کنید");
+                } else {
+                    startActivity(new Intent(DnschangerActivity.this, SettingsActivity.class));
+                }
+            }
         });
-        
-        nettest.setOnClickListener(v -> {
-            Intent intent = new Intent(DnschangerActivity.this, SpeedTestActivity.class);
-            startActivity(intent);
+
+        logoImage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(DnschangerActivity.this, DnsLogActivity.class));
+            }
         });
+
+        if (protocolGroup != null) {
+            protocolGroup.addOnButtonCheckedListener(new MaterialButtonToggleGroup.OnButtonCheckedListener() {
+                @Override
+                public void onButtonChecked(MaterialButtonToggleGroup group, int checkedId, boolean isChecked) {
+                    if (!isChecked) return;
+                    if (vpnActive) {
+                        showToast(isEn() ? "Disconnect first to change protocol" : "برای تغییر پروتکل ابتدا قطع کنید");
+                        applyProtocolUi(currentProtocol, false);
+                        return;
+                    }
+                    DnsProtocol next = DnsProtocol.UDP;
+                    if (checkedId == R.id.btn_proto_tcp) next = DnsProtocol.TCP;
+                    else if (checkedId == R.id.btn_proto_dot) next = DnsProtocol.DOT;
+                    else if (checkedId == R.id.btn_proto_doh) next = DnsProtocol.DOH;
+                    if (portEditText != null) portEditText.setText(String.valueOf(next.defaultPort));
+                    applyProtocolUi(next, true);
+                }
+            });
+        }
     }
-    
+
+    private void persistCurrentFields() {
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putString("dns1", textOf(dns1EditText));
+        editor.putString("dns2", textOf(dns2EditText));
+        editor.putString("ipv6_dns1", textOf(ipv6Dns1EditText));
+        editor.putString("ipv6_dns2", textOf(ipv6Dns2EditText));
+        editor.putString("dot_hostname", textOf(hostnameEditText));
+        editor.putString("doh_url", textOf(dohUrlEditText));
+        editor.putString("dns_port", textOf(portEditText));
+        editor.putString("dns_protocol", currentProtocol.name());
+        editor.apply();
+    }
+
+    private String textOf(TextInputEditText edit) {
+        if (edit == null || edit.getText() == null) return "";
+        return edit.getText().toString().trim();
+    }
+
     private void checkAndRequestVpnPermissions() {
-        LogHelper.log(getApplicationContext(), "Checking and requesting permissions");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) 
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
                     != PackageManager.PERMISSION_GRANTED) {
-                LogHelper.log(getApplicationContext(), "Requesting notification permission");
                 ActivityCompat.requestPermissions(this,
                         new String[]{Manifest.permission.POST_NOTIFICATIONS},
                         NOTIFICATION_PERMISSION_CODE);
@@ -350,48 +430,29 @@ public class DnschangerActivity extends AppCompatActivity {
             }
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (!NotificationHelper.areNotificationsEnabled(this)) {
-                LogHelper.log(getApplicationContext(), "Notifications not enabled - opening settings");
                 openNotificationSettings();
                 return;
             }
         }
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            if (ContextCompat.checkSelfPermission(this,
-                Manifest.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE) != PackageManager.PERMISSION_GRANTED) {
-                LogHelper.log(getApplicationContext(), "Requesting foreground service permission");
-                ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE},
-                    REQUEST_CODE_SPECIAL_USE_PERMISSION);
-                return;
-            }
-        }
-        
         checkVpnPermission();
     }
 
     private void checkVpnPermission() {
-        LogHelper.log(getApplicationContext(), "Checking VPN permission");
         Intent vpnIntent = VpnService.prepare(this);
         if (vpnIntent != null) {
-            LogHelper.log(getApplicationContext(), "VPN permission not granted - requesting");
             startActivityForResult(vpnIntent, VPN_PERMISSION_REQUEST_CODE);
         } else {
-            LogHelper.log(getApplicationContext(), "VPN permission already granted");
             startVpn();
         }
     }
 
     private void openNotificationSettings() {
-        boolean isEnglish = prefs.getBoolean("english_language", false);
-        LogHelper.log(getApplicationContext(), "Opening notification settings dialog");
         new MaterialAlertDialogBuilder(this, R.style.CustomDialogTheme)
-                .setTitle(isEnglish ? "Notification Permission Required" : "مجوز اعلانات مورد نیاز است")
-                .setMessage(isEnglish ?
-                        "Please enable notifications for this app to show VPN status." :
-                        "لطفاً نوتیفیکیشن‌های این برنامه را برای نمایش وضعیت VPN فعال کنید.")
-                .setPositiveButton(isEnglish ? "Open Settings" : "باز کردن تنظیمات", (dialog, which) -> {
-                    LogHelper.log(getApplicationContext(), "User clicked to open notification settings");
+                .setTitle(isEn() ? "Notification Permission Required" : "مجوز اعلانات مورد نیاز است")
+                .setMessage(isEn()
+                        ? "Please enable notifications for this app to show VPN status."
+                        : "لطفاً نوتیفیکیشن‌های این برنامه را برای نمایش وضعیت VPN فعال کنید.")
+                .setPositiveButton(isEn() ? "Open Settings" : "باز کردن تنظیمات", (dialog, which) -> {
                     Intent intent = new Intent();
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         intent.setAction(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
@@ -402,293 +463,302 @@ public class DnschangerActivity extends AppCompatActivity {
                         intent.putExtra("app_uid", getApplicationInfo().uid);
                     }
                     startActivity(intent);
+                    abortConnectingUi();
                 })
-                .setNegativeButton(isEnglish ? "Cancel" : "لغو", null)
+                .setNegativeButton(isEn() ? "Cancel" : "لغو", (dialog, which) -> abortConnectingUi())
+                .setOnCancelListener(dialog -> abortConnectingUi())
                 .setBackground(getResources().getDrawable(R.drawable.dialog_background))
                 .show();
     }
-    
+
     private void changeDnsWithRoot() {
-        String dns1 = dns1EditText.getText().toString().trim();
-        String dns2 = dns2EditText.getText().toString().trim();
-        String ipv6Dns1 = ipv6Dns1EditText.getText().toString().trim();
-        String ipv6Dns2 = ipv6Dns2EditText.getText().toString().trim();
-        LogHelper.log(getApplicationContext(), "Attempting to change DNS with root: " + dns1 + ", " + dns2);
-        
+        String dns1 = textOf(dns1EditText);
         if (TextUtils.isEmpty(dns1)) {
-            boolean isEnglish = prefs.getBoolean("english_language", false);
-            LogHelper.log(getApplicationContext(), "Primary DNS is empty");
-            showToast(isEnglish ? "Please enter primary DNS" : "لطفاً DNS اول را وارد کنید");
+            showToast(isEn() ? "Please enter primary DNS" : "لطفاً DNS اول را وارد کنید");
+            abortConnectingUi();
             return;
         }
-        
-        savePreferences(dns1, dns2, ipv6Dns1, ipv6Dns2);
-        
-        new Thread(() -> {
-            boolean success = RootCommands.changeDns(dns1, dns2, ipv6Dns1, ipv6Dns2);
-            LogHelper.log(getApplicationContext(), "Root DNS change result: " + success);
-            runOnUiThread(() -> {
-                boolean isEnglish = prefs.getBoolean("english_language", false);
-                if (success) {
-                    vpnActive = true;
-                    prefs.edit().putBoolean("vpn_active", true).apply();
-                    updateButton();
-                    startLivePingUpdates();
-                    showCustomToast(isEnglish ? "DNS changed successfully" : "DNS با موفقیت تغییر کرد", R.drawable.ic_check);
-                } else {
-                    showCustomToast(isEnglish ? "Failed to change DNS" : "تغییر DNS ناموفق بود", R.drawable.ic_error);
-                }
-            });
-        }).start();
-    }
-    
-    private void stopDnsConnection() {
-        LogHelper.log(getApplicationContext(), "Stopping DNS connection");
-        if (isRootMode) {
-            new Thread(() -> {
-                boolean success = RootCommands.restoreOriginalDns();
-                LogHelper.log(getApplicationContext(), "Root DNS restore result: " + success);
-                runOnUiThread(() -> {
-                    boolean isEnglish = prefs.getBoolean("english_language", false);
-                    if (success) {
-                        vpnActive = false;
-                        prefs.edit().putBoolean("vpn_active", false).apply();
-                        updateButton();
-                        stopLivePingUpdates();
-                        showCustomToast(isEnglish ? "DNS restored successfully" : "DNS با موفقیت بازگردانی شد", R.drawable.ic_check);
-                    } else {
-                        showCustomToast(isEnglish ? "Failed to restore DNS" : "بازگردانی DNS ناموفق بود", R.drawable.ic_error);
+        persistCurrentFields();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                boolean success = RootCommands.changeDns(dns1, textOf(dns2EditText),
+                        textOf(ipv6Dns1EditText), textOf(ipv6Dns2EditText));
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        setButtonLoading(false);
+                        if (success) {
+                            vpnActive = true;
+                            prefs.edit().putBoolean("vpn_active", true).apply();
+                            updateButton();
+                            startLivePingUpdates();
+                            showCustomToast(isEn() ? "DNS changed successfully" : "DNS با موفقیت تغییر کرد", R.drawable.ic_check);
+                        } else {
+                            updateButton();
+                            showCustomToast(isEn() ? "Failed to change DNS" : "تغییر DNS ناموفق بود", R.drawable.ic_error);
+                        }
                     }
                 });
+            }
+        }).start();
+    }
+
+    private void stopDnsConnection() {
+        if (isRootMode) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    boolean success = RootCommands.restoreOriginalDns();
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            setButtonLoading(false);
+                            if (success) {
+                                vpnActive = false;
+                                prefs.edit().putBoolean("vpn_active", false).apply();
+                                updateButton();
+                                stopLivePingUpdates();
+                                showCustomToast(isEn() ? "DNS restored successfully" : "DNS با موفقیت بازگردانی شد", R.drawable.ic_check);
+                            } else {
+                                updateButton();
+                                showCustomToast(isEn() ? "Failed to restore DNS" : "بازگردانی DNS ناموفق بود", R.drawable.ic_error);
+                            }
+                        }
+                    });
+                }
             }).start();
         } else {
             stopVpn();
         }
     }
 
-    private void showServerSelectionDialog() {
-        if (vpnActive) {
-            boolean isEnglish = prefs.getBoolean("english_language", false);
-            LogHelper.log(getApplicationContext(), "Cannot select server - VPN is active");
-            showToast(isEnglish ? "Please disconnect first" : "لطفاً ابتدا اتصال را قطع کنید");
-            return;
-        }
-        
-        LogHelper.log(getApplicationContext(), "Opening server selection activity");
-        Intent intent = new Intent(this, ServerselectionActivity.class);
-        startActivityForResult(intent, 1);
-    }
-
     private void performPingCheck() {
-        boolean isEnglish = prefs.getBoolean("english_language", false);
-        LogHelper.log(getApplicationContext(), "Performing ping check");
+        String dns = textOf(dns1EditText);
+        boolean dohReady = currentProtocol == DnsProtocol.DOH && !textOf(dohUrlEditText).isEmpty();
+        boolean dotReady = currentProtocol == DnsProtocol.DOT && !textOf(hostnameEditText).isEmpty();
 
-        String dns = dns1EditText.getText().toString().trim();
-        if (dns.isEmpty()) {
-            LogHelper.log(getApplicationContext(), "No DNS set for ping check");
-            runOnUiThread(() -> {
-                pingTextView.setText(isEnglish ? "No DNS set" : "DNS وارد نشده");
-                pingTextView.setTextColor(Color.parseColor("#EEEEEE"));
-            });
+        if (dns.isEmpty() && !dohReady && !dotReady) {
+            pingTextView.setText(isEn() ? "No DNS set" : "DNS وارد نشده");
             return;
         }
-
-        new Thread(() -> {
-            boolean success = false;
-            String resultText = "";
-            int pingValue = -1;
-
-            try {
-                LogHelper.log(getApplicationContext(), "Attempting ICMP ping to: " + dns);
-                Process process = Runtime.getRuntime().exec("ping -c 1 -W 2 " + dns);
-                int resultCode = process.waitFor();
-
-                java.io.InputStream inputStream = process.getInputStream();
-                java.util.Scanner s = new java.util.Scanner(inputStream).useDelimiter("\\A");
-                String output = s.hasNext() ? s.next() : "";
-
-                if (resultCode == 0 && output.contains("time=")) {
-                    int index = output.indexOf("time=");
-                    int end = output.indexOf(" ms", index);
-                    if (index > 0 && end > index) {
-                        String timeText = output.substring(index + 5, end);
-                        pingValue = (int) Float.parseFloat(timeText);
-                        resultText = (isEnglish ? "Ping: " : "پینگ: ") + pingValue + "ms";
-                        success = true;
-                        LogHelper.log(getApplicationContext(), "ICMP ping successful: " + pingValue + "ms");
+        if (!dns.isEmpty() && !HostValidator.isSafeHost(dns) && currentProtocol != DnsProtocol.DOH) {
+            pingTextView.setText(isEn() ? "Invalid host" : "آدرس نامعتبر");
+            return;
+        }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                int pingValue = measureDnsLatency(dns);
+                final boolean success = pingValue >= 0;
+                final String resultText = success
+                        ? ((isEn() ? "Ping: " : "پینگ: ") + pingValue + "ms · " + currentProtocol.label)
+                        : (isEn() ? "Ping failed · " + currentProtocol.label : "پینگ ناموفق · " + currentProtocol.label);
+                final int finalPing = pingValue;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        pingTextView.setText(resultText);
+                        if (success) {
+                            if (finalPing < 80) pingTextView.setTextColor(Color.parseColor("#4CAF50"));
+                            else if (finalPing < 120) pingTextView.setTextColor(Color.parseColor("#FFC107"));
+                            else if (finalPing <= 200) pingTextView.setTextColor(Color.parseColor("#FF632e"));
+                            else pingTextView.setTextColor(Color.parseColor("#FF0000"));
+                        } else {
+                            pingTextView.setTextColor(ThemeManager.getDefaultTextColor(DnschangerActivity.this));
+                        }
                     }
-                }
-            } catch (Exception e) {
-                LogHelper.log(getApplicationContext(), "ICMP ping failed: " + e.getMessage());
+                });
             }
-
-            if (!success) {
-                try {
-                    LogHelper.log(getApplicationContext(), "Attempting TCP ping to: " + dns);
-                    long startTime = System.currentTimeMillis();
-                    java.net.Socket socket = new java.net.Socket();
-                    java.net.InetSocketAddress address = new java.net.InetSocketAddress(dns, 53);
-                    socket.connect(address, 2000);
-                    socket.close();
-                    pingValue = (int) (System.currentTimeMillis() - startTime);
-                    resultText = (isEnglish ? "Ping: " : "پینگ: ") + pingValue + "ms";
-                    success = true;
-                    LogHelper.log(getApplicationContext(), "TCP ping successful: " + pingValue + "ms");
-                } catch (Exception e) {
-                    LogHelper.log(getApplicationContext(), "TCP ping failed: " + e.getMessage());
-                }
-            }
-
-            final boolean finalSuccess = success;
-            final String finalResultText = success ? resultText : (isEnglish ? "Ping failed" : "پینگ ناموفق بود");
-            final int finalPingValue = pingValue;
-
-            runOnUiThread(() -> {
-                pingTextView.setText(finalResultText);
-
-                if (finalSuccess) {
-                    if (finalPingValue < 80) {
-                        pingTextView.setTextColor(Color.parseColor("#4CAF50")); 
-                    } else if (finalPingValue < 120) {
-                        pingTextView.setTextColor(Color.parseColor("#FFC107")); 
-                    } else if (finalPingValue <= 200) {
-                        pingTextView.setTextColor(Color.parseColor("#FF632e")); 
-                    } else {
-                        pingTextView.setTextColor(Color.parseColor("#FF0000")); 
-                    }
-                } else {
-                    pingTextView.setTextColor(Color.parseColor("#EEEEEE"));
-                }
-            });
         }).start();
     }
 
-    private void updateButton() {
-        runOnUiThread(() -> {
-            boolean isEnglish = prefs.getBoolean("english_language", false);
-            LogHelper.log(getApplicationContext(), "Updating button state. VPN active: " + vpnActive + ", Root mode: " + isRootMode);
-            
-            if (vpnActive) {
-                vpnButton.setText(isEnglish ? 
-                    (isRootMode ? "Restore DNS" : "Disable DNS") : 
-                    (isRootMode ? "بازگردانی DNS" : "قطع DNS"));
-                vpnButton.setIconResource(R.drawable.ic_vpn_off);
+    private int measureDnsLatency(String dns) {
+        try {
+            DnsQueryEngine engine = new DnsQueryEngine(null, getApplicationContext(), currentProtocol,
+                    dns, textOf(dns2EditText), textOf(hostnameEditText), textOf(dohUrlEditText), parsePort());
+            return engine.measureLatencyMs();
+        } catch (Exception e) {
+            return pingIcmpOrTcp(dns);
+        }
+    }
+
+    private int pingIcmpOrTcp(String dns) {
+        if (!HostValidator.isSafeHost(dns)) return -2;
+        try {
+            ProcessBuilder pb = new ProcessBuilder("ping", "-c", "1", "-W", "2", dns);
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            java.io.InputStream inputStream = process.getInputStream();
+            java.util.Scanner s = new java.util.Scanner(inputStream).useDelimiter("\\A");
+            String output = s.hasNext() ? s.next() : "";
+            s.close();
+            int resultCode = process.waitFor();
+            if (resultCode == 0 && output.contains("time=")) {
+                int index = output.indexOf("time=");
+                int end = output.indexOf(" ms", index);
+                if (index > 0 && end > index) {
+                    return (int) Float.parseFloat(output.substring(index + 5, end));
+                }
+            }
+        } catch (Exception ignored) {}
+        try {
+            long startTime = System.currentTimeMillis();
+            java.net.Socket socket = new java.net.Socket();
+            socket.connect(new java.net.InetSocketAddress(dns, currentProtocol.defaultPort), 2000);
+            socket.close();
+            return (int) (System.currentTimeMillis() - startTime);
+        } catch (Exception e) {
+            return -2;
+        }
+    }
+
+    private int parsePort() {
+        try {
+            int p = Integer.parseInt(textOf(portEditText));
+            if (p > 0 && p < 65536) return p;
+        } catch (Exception ignored) {}
+        return currentProtocol.defaultPort;
+    }
+
+    private void setButtonLoading(boolean loading) {
+        connecting = loading;
+        if (vpnButtonProgress != null) {
+            vpnButtonProgress.setVisibility(loading ? View.VISIBLE : View.GONE);
+        }
+        if (vpnButton != null) {
+            vpnButton.setEnabled(!loading);
+            if (loading) {
+                vpnButton.setText("");
+                vpnButton.setIcon(null);
+            }
+        }
+        if (loading) {
+            if (selectServerButton != null) {
                 selectServerButton.setEnabled(false);
                 selectServerButton.setAlpha(0.5f);
-            
-                pingTextView.setText(isEnglish ? "Status: Connected" : "وضعیت: متصل");
-                pingTextView.setTextColor(Color.parseColor("#4CAF50"));
-                
-                if (!pingHandler.hasCallbacks(pingRunnable)) {
-                    startLivePingUpdates();
+            }
+            if (protocolGroup != null) protocolGroup.setEnabled(false);
+        }
+    }
+
+    private void abortConnectingUi() {
+        cancelConnectTimeout();
+        setButtonLoading(false);
+        updateButton();
+    }
+
+    private void scheduleConnectTimeout() {
+        cancelConnectTimeout();
+        connectTimeoutRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (connecting) {
+                    connecting = false;
+                    setButtonLoading(false);
+                    updateButton();
+                    showCustomToast(isEn() ? "Connection timed out, please try again"
+                            : "اتصال بیش از حد طول کشید، دوباره تلاش کنید", R.drawable.ic_error);
                 }
-            } else {
-                vpnButton.setText(isEnglish ? 
-                    (isRootMode ? "Change DNS" : "Enable DNS") : 
-                    (isRootMode ? "تغییر DNS" : "فعال کردن DNS"));
-                vpnButton.setIconResource(R.drawable.ic_vpn_on);
-                pingTextView.setText(isEnglish ? "Status: Not connected" : "وضعیت: متصل نیست");
-                pingTextView.setTextColor(Color.parseColor("#EEEEEE"));
-                selectServerButton.setEnabled(true);
-                selectServerButton.setAlpha(1.0f);
+            }
+        };
+        pingHandler.postDelayed(connectTimeoutRunnable, CONNECT_TIMEOUT_MS);
+    }
+
+    private void cancelConnectTimeout() {
+        if (connectTimeoutRunnable != null) {
+            pingHandler.removeCallbacks(connectTimeoutRunnable);
+            connectTimeoutRunnable = null;
+        }
+    }
+
+    private void updateButton() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (vpnActive) {
+                    vpnButton.setText(isEn()
+                            ? (isRootMode ? "Restore DNS" : "Disable " + currentProtocol.label)
+                            : (isRootMode ? "بازگردانی DNS" : "قطع " + currentProtocol.label));
+                    vpnButton.setIconResource(R.drawable.ic_vpn_off);
+                    selectServerButton.setEnabled(false);
+                    selectServerButton.setAlpha(0.5f);
+                    protocolGroup.setEnabled(false);
+                    pingTextView.setText(isEn() ? "Status: Connected" : "وضعیت: متصل");
+                    pingTextView.setTextColor(Color.parseColor("#4CAF50"));
+                } else {
+                    vpnButton.setText(isEn()
+                            ? (isRootMode ? "Change DNS" : "Enable " + currentProtocol.label)
+                            : (isRootMode ? "تغییر DNS" : "فعال کردن " + currentProtocol.label));
+                    vpnButton.setIconResource(R.drawable.ic_vpn_on);
+                    pingTextView.setText(isEn() ? "Status: Not connected" : "وضعیت: متصل نیست");
+                    pingTextView.setTextColor(ThemeManager.getDefaultTextColor(DnschangerActivity.this));
+                    selectServerButton.setEnabled(true);
+                    selectServerButton.setAlpha(1.0f);
+                    protocolGroup.setEnabled(true);
+                }
             }
         });
     }
 
     private void startVpn() {
-        String dns1 = dns1EditText.getText().toString().trim();
-        String dns2 = dns2EditText.getText().toString().trim();
-        String ipv6Dns1 = ipv6Dns1EditText.getText().toString().trim();
-        String ipv6Dns2 = ipv6Dns2EditText.getText().toString().trim();
-        LogHelper.log(getApplicationContext(), "Starting VPN with DNS: " + dns1 + ", " + dns2);
+        String dns1 = textOf(dns1EditText);
 
-        if (TextUtils.isEmpty(dns1)) {
-            boolean isEnglish = prefs.getBoolean("english_language", false);
-            LogHelper.log(getApplicationContext(), "Primary DNS is empty");
-            showToast(isEnglish ? "Please enter primary DNS" : "لطفاً DNS اول را وارد کنید");
+        boolean dotHasHostname = currentProtocol == DnsProtocol.DOT && !textOf(hostnameEditText).isEmpty();
+        if (TextUtils.isEmpty(dns1) && currentProtocol != DnsProtocol.DOH && !dotHasHostname) {
+            showToast(isEn() ? "Please enter primary DNS" : "لطفاً DNS اول را وارد کنید");
+            abortConnectingUi();
             return;
         }
+        if (currentProtocol == DnsProtocol.DOH && textOf(dohUrlEditText).isEmpty()) {
+            showToast(isEn() ? "Please enter a DoH URL" : "لطفاً آدرس DoH را وارد کنید");
+            abortConnectingUi();
+            return;
+        }
+        if (currentProtocol == DnsProtocol.DOT && textOf(hostnameEditText).isEmpty() && dns1.isEmpty()) {
+            showToast(isEn() ? "Enter DoT hostname or IP" : "نام میزبان یا آی‌پی DoT را وارد کنید");
+            abortConnectingUi();
+            return;
+        }
+        persistCurrentFields();
+        connecting = true;
+        pingTextView.setText(isEn() ? "Connecting…" : "در حال اتصال…");
 
-        savePreferences(dns1, dns2, ipv6Dns1, ipv6Dns2);
-        boolean useTcp = prefs.getBoolean("dns_over_tcp", false);
-    
         Intent intent = new Intent(this, MyVpnService.class);
         intent.putExtra("dns1", dns1);
-        intent.putExtra("dns2", dns2);
-        intent.putExtra("ipv6_dns1", ipv6Dns1);
-        intent.putExtra("ipv6_dns2", ipv6Dns2);
-        intent.putExtra("use_tcp", useTcp);
+        intent.putExtra("dns2", textOf(dns2EditText));
+        intent.putExtra("ipv6_dns1", textOf(ipv6Dns1EditText));
+        intent.putExtra("ipv6_dns2", textOf(ipv6Dns2EditText));
+        intent.putExtra("protocol", currentProtocol.name());
+        intent.putExtra("hostname", textOf(hostnameEditText));
+        intent.putExtra("doh_url", textOf(dohUrlEditText));
+        intent.putExtra("dns_port", parsePort());
         intent.putExtra("use_dhcp", prefs.getBoolean("use_dhcp", false));
         intent.putExtra("ipv4", prefs.getString("ipv4_address", "10.0.0.2"));
-        
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent);
         } else {
             startService(intent);
         }
-
-        boolean isEnglish = prefs.getBoolean("english_language", false);
-        pingTextView.setText(isEnglish ? "Ping: Checking..." : "پینگ: در حال بررسی...");
-        pingTextView.setTextColor(Color.parseColor("#EEEEEE"));
-
-        pingHandler.postDelayed(() -> {
-            refreshVpnStatus();
-            showCustomToast(isEnglish ? "Connected successfully" : "اتصال با موفقیت برقرار شد", R.drawable.ic_check);
-        }, 1500);
-
-        if (useTcp) {
-            new Thread(() -> {
-                String result = DnsOverTcpHelper.resolveA("example.com", dns1);
-                LogHelper.log(getApplicationContext(), "DNS over TCP Result: " + result);
-            }).start();
-        }
     }
 
     private void stopVpn() {
-        LogHelper.log(getApplicationContext(), "Stopping VPN service");
         Intent intent = new Intent(this, MyVpnService.class);
-        intent.setAction("DISCONNECT_VPN");
+        intent.setAction(MyVpnService.ACTION_STOP_VPN);
         startService(intent);
-        
-        vpnActive = false;
-        prefs.edit().putBoolean("vpn_active", false).apply();
-        updateButton();
-        stopLivePingUpdates();
-    }
 
-    private void savePreferences(String dns1, String dns2, String ipv6Dns1, String ipv6Dns2) {
-        LogHelper.log(getApplicationContext(), "Saving preferences: " + dns1 + ", " + dns2);
-        SharedPreferences.Editor editor = prefs.edit();
-        editor.putString("dns1", dns1);
-        editor.putString("dns2", dns2);
-        editor.putString("ipv6_dns1", ipv6Dns1);
-        editor.putString("ipv6_dns2", ipv6Dns2);
-        editor.apply();
-    }
-    
-    private void showErrorAndDisconnect(String error) {
-        LogHelper.log(getApplicationContext(), "Showing error and disconnecting: " + error);
-        runOnUiThread(() -> {
-            stopDnsConnection();
-            vpnActive = false;
-            prefs.edit().putBoolean("vpn_active", false).apply();
-            updateButton();
-            stopLivePingUpdates();
-        });
     }
 
     private void showToast(String message) {
-        LogHelper.log(getApplicationContext(), "Showing toast: " + message);
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
 
     private void showCustomToast(String message, int iconRes) {
-        LogHelper.log(getApplicationContext(), "Showing custom toast: " + message);
         Toast toast = new Toast(this);
         View view = LayoutInflater.from(this).inflate(R.layout.custom_toast, null);
         TextView text = view.findViewById(R.id.toast_text);
         ImageView icon = view.findViewById(R.id.toast_icon);
-        
         text.setText(message);
         icon.setImageResource(iconRes);
         toast.setView(view);
@@ -699,59 +769,39 @@ public class DnschangerActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        LogHelper.log(getApplicationContext(), "Activity result - requestCode: " + requestCode + ", resultCode: " + resultCode);
-        
-        if (requestCode == 1 && resultCode == RESULT_OK && data != null) {
-            String dns1 = data.getStringExtra("dns1");
-            String dns2 = data.getStringExtra("dns2");
-            String ipv6Dns1 = data.getStringExtra("ipv6_dns1");
-            String ipv6Dns2 = data.getStringExtra("ipv6_dns2");
-            LogHelper.log(getApplicationContext(), "Received DNS from server selection: " + dns1 + ", " + dns2);
-            
-            dns1EditText.setText(dns1);
-            dns2EditText.setText(dns2);
-            ipv6Dns1EditText.setText(ipv6Dns1);
-            ipv6Dns2EditText.setText(ipv6Dns2);
-        } 
-        else if (requestCode == NOTIFICATION_PERMISSION_CODE) {
-            LogHelper.log(getApplicationContext(), "Notification permission result received");
-            checkAndRequestVpnPermissions();
-        }
-        else if (requestCode == VPN_PERMISSION_REQUEST_CODE) {
+        if (requestCode == SERVER_PICK_CODE && resultCode == RESULT_OK && data != null) {
+            dns1EditText.setText(n(data.getStringExtra("dns1")));
+            dns2EditText.setText(n(data.getStringExtra("dns2")));
+            ipv6Dns1EditText.setText(n(data.getStringExtra("ipv6_dns1")));
+            ipv6Dns2EditText.setText(n(data.getStringExtra("ipv6_dns2")));
+            if (hostnameEditText != null) hostnameEditText.setText(n(data.getStringExtra("hostname")));
+            if (dohUrlEditText != null) dohUrlEditText.setText(n(data.getStringExtra("doh_url")));
+            int port = data.getIntExtra("dns_port", currentProtocol.defaultPort);
+            if (portEditText != null) portEditText.setText(String.valueOf(port));
+            String proto = data.getStringExtra("protocol");
+            if (proto != null) applyProtocolUi(DnsProtocol.from(proto), true);
+            persistCurrentFields();
+        } else if (requestCode == VPN_PERMISSION_REQUEST_CODE) {
             if (resultCode == RESULT_OK) {
-                LogHelper.log(getApplicationContext(), "VPN permission granted");
                 startVpn();
             } else {
-                boolean isEnglish = prefs.getBoolean("english_language", false);
-                LogHelper.log(getApplicationContext(), "VPN permission denied");
-                showToast(isEnglish ? "VPN permission is required to change DNS" : "مجوز VPN برای تغییر DNS ضروری است");
+                showToast(isEn() ? "VPN permission is required to change DNS" : "مجوز VPN برای تغییر DNS ضروری است");
+                abortConnectingUi();
             }
         }
     }
 
+    private String n(String s) { return s == null ? "" : s; }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        LogHelper.log(getApplicationContext(), "Permission result - requestCode: " + requestCode);
-        
         if (requestCode == NOTIFICATION_PERMISSION_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                LogHelper.log(getApplicationContext(), "Notification permission granted");
                 checkVpnPermission();
             } else {
-                boolean isEnglish = prefs.getBoolean("english_language", false);
-                LogHelper.log(getApplicationContext(), "Notification permission denied");
-                showToast(isEnglish ? "Notification permission is required for VPN service" : "مجوز اعلانات برای سرویس VPN ضروری است");
-            }
-        }
-        else if (requestCode == REQUEST_CODE_SPECIAL_USE_PERMISSION) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                LogHelper.log(getApplicationContext(), "Foreground service permission granted");
-                checkVpnPermission();
-            } else {
-                boolean isEnglish = prefs.getBoolean("english_language", false);
-                LogHelper.log(getApplicationContext(), "Foreground service permission denied");
-                showToast(isEnglish ? "Foreground service permission is required" : "مجوز سرویس پیش‌زمینه ضروری است");
+                showToast(isEn() ? "Notification permission is required for VPN service" : "مجوز اعلانات برای سرویس VPN ضروری است");
+                abortConnectingUi();
             }
         }
     }
@@ -759,10 +809,8 @@ public class DnschangerActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        LogHelper.log(getApplicationContext(), "Activity resumed");
-        
         if (!isReceiverRegistered) {
-            IntentFilter filter = new IntentFilter("VPN_STATE_CHANGED");
+            IntentFilter filter = new IntentFilter(MyVpnService.ACTION_STATE);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 registerReceiver(vpnStateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
             } else {
@@ -770,7 +818,8 @@ public class DnschangerActivity extends AppCompatActivity {
             }
             isReceiverRegistered = true;
         }
-        
+        currentProtocol = DnsProtocol.from(prefs.getString("dns_protocol", currentProtocol.name()));
+        applyProtocolUi(currentProtocol, false);
         refreshVpnStatus();
         startHintTimer();
     }
@@ -778,65 +827,50 @@ public class DnschangerActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        LogHelper.log(getApplicationContext(), "Activity paused");
+        persistCurrentFields();
         stopLivePingUpdates();
         stopHintTimer();
-        
         if (isReceiverRegistered) {
             try {
                 unregisterReceiver(vpnStateReceiver);
                 isReceiverRegistered = false;
-            } catch (Exception e) {
-                LogHelper.log(getApplicationContext(), "Error unregistering receiver: " + e.getMessage());
-            }
+            } catch (Exception ignored) {}
         }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        LogHelper.log(getApplicationContext(), "Activity destroyed");
+        cancelConnectTimeout();
         stopLivePingUpdates();
         stopHintTimer();
-        
         if (isReceiverRegistered) {
             try {
                 unregisterReceiver(vpnStateReceiver);
                 isReceiverRegistered = false;
-            } catch (Exception e) {
-                LogHelper.log(getApplicationContext(), "Error unregistering receiver: " + e.getMessage());
-            }
+            } catch (Exception ignored) {}
         }
     }
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) {
-            refreshVpnStatus();
-        }
+        if (hasFocus) refreshVpnStatus();
     }
 
     private void refreshVpnStatus() {
+        if (connecting) return;
         isRootMode = prefs.getBoolean("root_mode", false);
-        
         if (isRootMode) {
             String savedDns1 = prefs.getString("dns1", "");
-            vpnActive = prefs.getBoolean("vpn_active", false) && 
-                       !savedDns1.isEmpty() && 
-                       RootCommands.isDnsChanged(savedDns1);
+            vpnActive = prefs.getBoolean("vpn_active", false)
+                    && !savedDns1.isEmpty()
+                    && RootCommands.isDnsChanged(savedDns1);
         } else {
-            vpnActive = prefs.getBoolean("vpn_active", false) && 
-                       MyVpnService.isRunning(this);
+            vpnActive = prefs.getBoolean("vpn_active", false) && MyVpnService.isRunning(this);
         }
-        
-        runOnUiThread(() -> {
-            updateButton();
-            if (vpnActive) {
-                startLivePingUpdates();
-            } else {
-                stopLivePingUpdates();
-            }
-        });
+        updateButton();
+        if (vpnActive) startLivePingUpdates();
+        else stopLivePingUpdates();
     }
 }

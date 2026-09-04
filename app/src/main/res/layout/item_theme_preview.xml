@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:padding="8dp">
+
+    <FrameLayout
+        android:id="@+id/preview_card_frame"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        
+        <View
+            android:id="@+id/preview_selected_ring"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/theme_preview_ring"
+            android:visibility="invisible"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="4dp"
+            android:orientation="vertical"
+            android:background="@drawable/theme_preview_card_bg"
+            android:clipToOutline="true">
+
+            
+            <FrameLayout
+                android:id="@+id/preview_hero"
+                android:layout_width="match_parent"
+                android:layout_height="58dp"
+                android:background="@drawable/theme_preview_hero_bg">
+
+                <ImageView
+                    android:id="@+id/preview_power_icon"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:layout_gravity="center_horizontal|bottom"
+                    android:layout_marginBottom="-17dp"
+                    android:padding="7dp"
+                    android:src="@drawable/ic_vpn_shield"
+                    android:background="@drawable/theme_preview_power_bg"/>
+            </FrameLayout>
+
+            
+            <LinearLayout
+                android:id="@+id/preview_body"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="22dp"
+                android:paddingHorizontal="10dp"
+                android:paddingBottom="10dp">
+
+                <View
+                    android:id="@+id/preview_row1"
+                    android:layout_width="match_parent"
+                    android:layout_height="8dp"
+                    android:layout_marginBottom="6dp"
+                    android:background="@drawable/theme_preview_row_bg"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <View
+                        android:id="@+id/preview_row2a"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="8dp"
+                        android:layout_marginEnd="4dp"
+                        android:background="@drawable/theme_preview_row_bg"/>
+
+                    <View
+                        android:id="@+id/preview_row2b"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="8dp"
+                        android:background="@drawable/theme_preview_row_bg"/>
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/preview_check_badge"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="8dp"
+            android:src="@drawable/ic_check"
+            android:padding="3dp"
+            android:visibility="invisible"/>
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/preview_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textSize="13sp"
+        android:textColor="?attr/colorOnSurface"
+        android:text="Theme"/>
+</LinearLayout>

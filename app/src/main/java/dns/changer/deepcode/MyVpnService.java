@@ -5,51 +5,58 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.ServiceInfo;
+import android.net.ConnectivityManager;
+import android.net.Network;
 import android.net.VpnService;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
-import android.util.Log;
-import androidx.annotation.RequiresApi;
+import android.system.OsConstants;
 import androidx.core.app.NotificationCompat;
 import java.io.IOException;
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.List;
-import dns.changer.deepcode.R;
-import android.content.pm.ServiceInfo;
-import android.Manifest;
-import android.content.pm.PackageManager;
-import androidx.core.content.ContextCompat;
 
 public class MyVpnService extends VpnService implements Runnable {
 
     private static final String TAG = "MyVpnService";
     private static final int NOTIF_ID = 1;
     private static final String CHANNEL_ID = "vpn_channel";
-    private static final String ACTION_STOP_VPN = "DISCONNECT_VPN";
-
-    private DnsTcpProxy dnsTcpProxy;
-    private boolean useTcp = false;
+    public static final String ACTION_STOP_VPN = "DISCONNECT_VPN";
+    public static final String ACTION_STATE = "VPN_STATE_CHANGED";
+    private static final String VPN_DNS = "10.0.0.1";
+    private static final String VPN_ADDR = "10.0.0.2";
 
     private Thread vpnThread;
     private ParcelFileDescriptor vpnInterface;
-    private boolean isRunning = false;
+    private TunDnsForwarder forwarder;
+    private DnsQueryEngine engine;
+    private volatile boolean isRunning = false;
 
     private String dns1 = "78.157.42.101";
     private String dns2 = "78.157.42.100";
     private String ipv6Dns1 = "";
     private String ipv6Dns2 = "";
-    private String ipv4 = "10.0.0.2";
+    private String ipv4 = VPN_ADDR;
     private boolean useDhcp = false;
+    private DnsProtocol protocol = DnsProtocol.UDP;
+    private String hostname = "";
+    private String dohUrl = "";
+    private int dnsPort = 53;
+
+    private ConnectivityManager connectivityManager;
+    private ConnectivityManager.NetworkCallback networkCallback;
+    private volatile long lastReconnectAt = 0L;
+    private static final long RECONNECT_DEBOUNCE_MS = 4000L;
+
+    private volatile boolean ignoreNextNetworkCallback = false;
 
     @Override
     public IBinder onBind(Intent intent) {
-        return null;
+        return super.onBind(intent);
     }
 
     @Override
@@ -67,106 +74,245 @@ public class MyVpnService extends VpnService implements Runnable {
 
         SharedPreferences prefs = getSharedPreferences("vpn_prefs", Context.MODE_PRIVATE);
         boolean runInBackground = prefs.getBoolean("run_in_background", true);
-        useTcp = prefs.getBoolean("dns_over_tcp", false);
-        
-        LogHelper.log(getApplicationContext(), "Starting VPN with settings - TCP: " + useTcp);
-
-        // اضافه شدن تنظیم پارامترهای ارتباطی مورد نیاز پروکسی قبل از استارت آن
-        if (useTcp) {
-            loadDnsSettings(intent); // لود اولیه مقادیر dns1 جهت انتقال به پروکسی
-            prefs.edit()
-                 .putString("dot_server", (dns1 != null && !dns1.isEmpty()) ? dns1 : "78.157.42.101")
-                 .putString("dot_port", "5353")
-                 .apply();
-            startDnsTcpProxy();
-        }
-
         if (!runInBackground && !isRunning) {
             stopSelf();
             return START_NOT_STICKY;
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            checkNotificationPermission();
-        }
+        loadSettings(intent, prefs);
 
-        loadDnsSettings(intent);
-        
         try {
             startForegroundServiceWithNotification();
         } catch (SecurityException e) {
-            LogHelper.log(getApplicationContext(), "Failed to start foreground service: " + e.getMessage());
-            stopVpn();
-            sendVpnStateBroadcast(false, "Failed to start VPN due to missing permissions");
+            LogHelper.log(getApplicationContext(), "Foreground start failed: " + e.getMessage());
+            sendVpnStateBroadcast(false, "Missing notification permission");
+            stopSelf();
             return START_NOT_STICKY;
         }
 
         if (vpnThread == null || !vpnThread.isAlive()) {
-            startVpnThread();
+            isRunning = true;
+            vpnThread = new Thread(this, "MyVpnThread");
+            vpnThread.start();
         }
-
-        saveVpnState(true);
-        sendVpnStateBroadcast(true, null);
+        registerAutoReconnect(prefs);
         return START_STICKY;
     }
 
-    private void startDnsTcpProxy() {
-        if (dnsTcpProxy == null) {
-            dnsTcpProxy = new DnsTcpProxy(getApplicationContext());
-            dnsTcpProxy.start();
-            LogHelper.log(getApplicationContext(), "DNS over TCP proxy started");
+    
+    private void registerAutoReconnect(SharedPreferences prefs) {
+        if (!prefs.getBoolean("auto_reconnect", true)) {
+            unregisterAutoReconnect();
+            return;
+        }
+        if (networkCallback != null) return; // already registered
+        try {
+            connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (connectivityManager == null) return;
+            ignoreNextNetworkCallback = true;
+            lastReconnectAt = System.currentTimeMillis();
+            networkCallback = new ConnectivityManager.NetworkCallback() {
+                @Override
+                public void onAvailable(Network network) {
+                    if (ignoreNextNetworkCallback) {
+                        ignoreNextNetworkCallback = false;
+                        return;
+                    }
+                    long now = System.currentTimeMillis();
+                    if (!isRunning || now - lastReconnectAt < RECONNECT_DEBOUNCE_MS) return;
+                    lastReconnectAt = now;
+                    LogHelper.log(getApplicationContext(), "Network changed — reconnecting DNS VPN");
+
+                    stopVpn();
+                    try {
+                        startService(new Intent(MyVpnService.this, MyVpnService.class));
+                    } catch (Exception ignored) {}
+                }
+            };
+            connectivityManager.registerDefaultNetworkCallback(networkCallback);
+        } catch (Exception e) {
+            LogHelper.log(getApplicationContext(), "Auto-reconnect registration failed: " + e.getMessage());
         }
     }
 
-
-    private void checkNotificationPermission() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED) {
-            LogHelper.log(getApplicationContext(), "Notification permission not granted");
-            stopVpn();
-            sendVpnStateBroadcast(false, "Notification permission required");
+    private void unregisterAutoReconnect() {
+        if (connectivityManager != null && networkCallback != null) {
+            try { connectivityManager.unregisterNetworkCallback(networkCallback); } catch (Exception ignored) {}
         }
+        networkCallback = null;
+        ignoreNextNetworkCallback = false;
     }
 
-    private void loadDnsSettings(Intent intent) {
+    private void loadSettings(Intent intent, SharedPreferences prefs) {
+        protocol = DnsProtocol.from(prefs.getString("dns_protocol",
+                prefs.getBoolean("dns_over_tcp", false) ? "TCP" : "UDP"));
+        hostname = prefs.getString("dot_hostname", "");
+        dohUrl = prefs.getString("doh_url", "");
+        try {
+            dnsPort = Integer.parseInt(prefs.getString("dns_port",
+                    String.valueOf(protocol.defaultPort)));
+        } catch (Exception e) {
+            dnsPort = protocol.defaultPort;
+        }
+        try {
+            DnsQueryEngine.configureTimeoutMs(
+                    Integer.parseInt(prefs.getString("dns_timeout_ms", "4000")));
+        } catch (Exception ignored) {}
+
         if (intent != null) {
-            dns1 = intent.getStringExtra("dns1");
-            dns2 = intent.getStringExtra("dns2");
-            ipv6Dns1 = intent.getStringExtra("ipv6_dns1");
-            ipv6Dns2 = intent.getStringExtra("ipv6_dns2");
+            String p = intent.getStringExtra("protocol");
+            if (p != null) protocol = DnsProtocol.from(p);
+            if (intent.getStringExtra("dns1") != null) dns1 = intent.getStringExtra("dns1");
+            if (intent.getStringExtra("dns2") != null) dns2 = intent.getStringExtra("dns2");
+            if (intent.getStringExtra("ipv6_dns1") != null) ipv6Dns1 = intent.getStringExtra("ipv6_dns1");
+            if (intent.getStringExtra("ipv6_dns2") != null) ipv6Dns2 = intent.getStringExtra("ipv6_dns2");
+            if (intent.getStringExtra("hostname") != null) hostname = intent.getStringExtra("hostname");
+            if (intent.getStringExtra("doh_url") != null) dohUrl = intent.getStringExtra("doh_url");
+            if (intent.getIntExtra("dns_port", 0) > 0) dnsPort = intent.getIntExtra("dns_port", dnsPort);
             String ip = intent.getStringExtra("ipv4");
-            useDhcp = intent.getBooleanExtra("use_dhcp", false);
+            if (ip != null && !ip.isEmpty()) ipv4 = ip;
+            useDhcp = intent.getBooleanExtra("use_dhcp", prefs.getBoolean("use_dhcp", false));
+        } else {
+            dns1 = prefs.getString("dns1", dns1);
+            dns2 = prefs.getString("dns2", dns2);
+            ipv6Dns1 = prefs.getString("ipv6_dns1", "");
+            ipv6Dns2 = prefs.getString("ipv6_dns2", "");
+            ipv4 = prefs.getString("ipv4_address", VPN_ADDR);
+            useDhcp = prefs.getBoolean("use_dhcp", false);
+        }
+        if (dns1 == null || dns1.isEmpty()) dns1 = "1.1.1.1";
+        if (dns2 == null) dns2 = "";
+        if (ipv6Dns1 == null) ipv6Dns1 = "";
+        if (ipv6Dns2 == null) ipv6Dns2 = "";
+        LogHelper.log(getApplicationContext(),
+                "VPN start protocol=" + protocol.label + " dns1=" + dns1 + " host=" + hostname);
+    }
 
-            if (ip != null && !ip.isEmpty()) {
-                ipv4 = ip;
+    private boolean needsIntercept() {
+        return protocol == DnsProtocol.TCP
+                || protocol == DnsProtocol.DOT
+                || protocol == DnsProtocol.DOH;
+    }
+
+    @Override
+    public void run() {
+        try {
+            if (vpnInterface != null) {
+                try { vpnInterface.close(); } catch (IOException ignored) {}
+                vpnInterface = null;
+            }
+            vpnInterface = establishVpn();
+            if (vpnInterface == null) {
+                LogHelper.log(getApplicationContext(), "builder.establish() returned null");
+                sendVpnStateBroadcast(false, "Failed to establish VPN");
+                saveVpnState(false);
+                stopSelf();
+                return;
+            }
+
+            engine = new DnsQueryEngine(this, getApplicationContext(), protocol,
+                    dns1, dns2, hostname, dohUrl, dnsPort);
+
+            boolean healthy = verifyDns();
+            if (!healthy) {
+                LogHelper.log(getApplicationContext(), "DNS health check failed — staying up, will retry");
+            }
+
+            saveVpnState(true);
+            sendVpnStateBroadcast(true, healthy ? null : "connected_degraded");
+            updateNotification();
+
+            if (needsIntercept()) {
+                forwarder = new TunDnsForwarder(vpnInterface, engine);
+                forwarder.run();
+            } else {
+                while (!Thread.interrupted() && isRunning) {
+                    try {
+                        Thread.sleep(3000);
+                    } catch (InterruptedException e) {
+                        break;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LogHelper.log(getApplicationContext(), "VPN error: " + e.getMessage());
+            sendVpnStateBroadcast(false, e.getMessage());
+        } finally {
+            stopVpn();
+        }
+    }
+
+    private boolean verifyDns() {
+        try {
+            int ms = engine.measureLatencyMs();
+            LogHelper.log(getApplicationContext(), "DNS health " + protocol.label + " = " + ms + "ms");
+            return ms > 0;
+        } catch (Exception e) {
+            LogHelper.log(getApplicationContext(), "DNS health exception: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private ParcelFileDescriptor establishVpn() throws IOException {
+        Builder builder = new Builder();
+        builder.setSession(getString(R.string.app_name))
+                .setMtu(1500)
+                .allowFamily(OsConstants.AF_INET);
+
+        String addr = (!useDhcp && ipv4 != null && !ipv4.isEmpty()) ? ipv4 : VPN_ADDR;
+        builder.addAddress(addr, 32);
+
+        if (needsIntercept()) {
+            builder.allowFamily(OsConstants.AF_INET6);
+            builder.addAddress("fd66:6463::2", 128);
+            builder.addDnsServer(VPN_DNS);
+            builder.addRoute(VPN_DNS, 32);
+            builder.setBlocking(true);
+        } else {
+            addPlainDns(builder);
+            builder.addRoute(addr, 32);
+            builder.setBlocking(false);
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            builder.setMetered(false);
+        }
+        try {
+            builder.addDisallowedApplication(getPackageName());
+        } catch (Exception e) {
+            LogHelper.log(getApplicationContext(), "disallow self failed: " + e.getMessage());
+        }
+        return builder.establish();
+    }
+
+    private void addPlainDns(Builder builder) {
+        boolean added = false;
+        if (HostValidator.isValidDnsAddress(dns1)) {
+            try { builder.addDnsServer(dns1); added = true; } catch (Exception e) {
+                LogHelper.log(getApplicationContext(), "addDns " + dns1 + " failed");
             }
         }
-    }
-
-    private void startVpnThread() {
-        isRunning = true;
-        vpnThread = new Thread(this, "MyVpnThread");
-        vpnThread.start();
-        LogHelper.log(getApplicationContext(), "VPN thread started");
+        if (HostValidator.isValidDnsAddress(dns2)) {
+            try { builder.addDnsServer(dns2); } catch (Exception ignored) {}
+        }
+        if (HostValidator.isValidDnsAddress(ipv6Dns1)) {
+            try { builder.addDnsServer(ipv6Dns1); } catch (Exception ignored) {}
+        }
+        if (HostValidator.isValidDnsAddress(ipv6Dns2)) {
+            try { builder.addDnsServer(ipv6Dns2); } catch (Exception ignored) {}
+        }
+        if (!added) {
+            builder.addDnsServer("1.1.1.1");
+        }
     }
 
     private void startForegroundServiceWithNotification() {
         createNotificationChannel();
-
-        SharedPreferences prefs = getSharedPreferences("vpn_prefs", MODE_PRIVATE);
-        boolean isEnglish = prefs.getBoolean("english_language", false);
-
-        String title = isEnglish ? "DNS Active" : "DNS فعال است";
-        String contentText = buildNotificationContent(isEnglish);
-        String actionText = isEnglish ? "Disconnect" : "قطع اتصال";
-
-        Notification notification = buildNotification(title, contentText, actionText);
-        
+        Notification notification = buildNotification();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             try {
                 startForeground(NOTIF_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
             } catch (Exception e) {
-                LogHelper.log(getApplicationContext(), "Failed to start with special use type, falling back: " + e.getMessage());
                 startForeground(NOTIF_ID, notification);
             }
         } else {
@@ -174,80 +320,54 @@ public class MyVpnService extends VpnService implements Runnable {
         }
     }
 
-    private String buildNotificationContent(boolean isEnglish) {
-        SharedPreferences prefs = getSharedPreferences("vpn_prefs", MODE_PRIVATE);
-        StringBuilder content = new StringBuilder();
-
-        content.append(isEnglish ? "IPv4 DNS: " : "DNS IPv4: ")
-                .append(dns1)
-                .append(dns2.isEmpty() ? "" : ", " + dns2);
-
-        if (!ipv6Dns1.isEmpty()) {
-            content.append(isEnglish ? "\nIPv6 DNS: " : "\nDNS IPv6: ")
-                    .append(ipv6Dns1)
-                    .append(ipv6Dns2.isEmpty() ? "" : ", " + ipv6Dns2);
-        }
-
-        if (useTcp) {
-            String dotServer = prefs.getString("dot_server", "127.0.0.1");
-            String dotPort = prefs.getString("dot_port", "5353");
-            content.append("\nTCP Proxy: ")
-                    .append(dotServer)
-                    .append(":")
-                    .append(dotPort);
-        }
-
-        return content.toString();
+    private void updateNotification() {
+        try {
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            if (manager != null) manager.notify(NOTIF_ID, buildNotification());
+        } catch (Exception ignored) {}
     }
 
-
-    @RequiresApi(Build.VERSION_CODES.O)
     private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
         SharedPreferences prefs = getSharedPreferences("vpn_prefs", MODE_PRIVATE);
         boolean isEnglish = prefs.getBoolean("english_language", false);
-
-        String channelName = isEnglish ? "VPN Service Channel" : "کانال سرویس VPN";
-        String channelDescription = isEnglish ?
-                "Channel for DNS VPN service notifications" :
-                "کانال اطلاعرسانی سرویس تغییر DNS";
-
         NotificationChannel channel = new NotificationChannel(
                 CHANNEL_ID,
-                channelName,
+                isEnglish ? "VPN Service Channel" : "کانال سرویس VPN",
                 NotificationManager.IMPORTANCE_LOW
         );
-        channel.setDescription(channelDescription);
+        channel.setDescription(isEnglish
+                ? "Channel for DNS VPN service notifications"
+                : "کانال اطلاعرسانی سرویس تغییر DNS");
         channel.setShowBadge(false);
         channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
-
         NotificationManager manager = getSystemService(NotificationManager.class);
-        if (manager != null) {
-            manager.createNotificationChannel(channel);
-        }
+        if (manager != null) manager.createNotificationChannel(channel);
     }
 
-    private Notification buildNotification(String title, String contentText, String actionText) {
+    private Notification buildNotification() {
+        SharedPreferences prefs = getSharedPreferences("vpn_prefs", MODE_PRIVATE);
+        boolean isEnglish = prefs.getBoolean("english_language", false);
+        String title = isEnglish ? "DNS Active · " + protocol.label : "DNS فعال · " + protocol.label;
+        String content = buildNotificationContent(isEnglish);
+        String actionText = isEnglish ? "Disconnect" : "قطع اتصال";
+
         Intent stopIntent = new Intent(this, MyVpnService.class);
         stopIntent.setAction(ACTION_STOP_VPN);
         PendingIntent stopPendingIntent = PendingIntent.getService(
-                this,
-                0,
-                stopIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
+                this, 0, stopIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         Intent mainIntent = new Intent(this, DnschangerActivity.class);
         mainIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent contentIntent = PendingIntent.getActivity(
-                this,
-                1,
-                mainIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
+                this, 1, mainIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(title)
-                .setContentText(contentText)
+                .setContentText(content)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(content))
                 .setSmallIcon(R.drawable.ic_shield)
                 .addAction(R.drawable.ic_vpn_off, actionText, stopPendingIntent)
                 .setContentIntent(contentIntent)
@@ -257,233 +377,95 @@ public class MyVpnService extends VpnService implements Runnable {
                 .build();
     }
 
-    @Override
-    public void run() {
-        try {
-            LogHelper.log(getApplicationContext(), "Starting VPN connection with DNS: " + dns1 + ", " + dns2 +
-                    " and IPv6 DNS: " + ipv6Dns1 + ", " + ipv6Dns2);
-
-            if (vpnInterface != null) {
-                vpnInterface.close();
-                vpnInterface = null;
-            }
-
-            vpnInterface = establishVpn();
-
-            if (vpnInterface != null) {
-                LogHelper.log(getApplicationContext(), "VPN connection established successfully");
-                maintainVpnConnection();
-            } else {
-                handleVpnEstablishFailure();
-            }
-        } catch (Exception e) {
-            handleVpnError(e);
-        } finally {
-            cleanupVpnResources();
-        }
-    }
-
-    private void maintainVpnConnection() throws InterruptedException {
-        while (!Thread.interrupted() && isRunning) {
-            if (useTcp && dnsTcpProxy != null) {
-                handleTcpQueries();
-            }
-            Thread.sleep(1000);
-        }
-    }
-
-    private void handleTcpQueries() {
-        // Optional
-    }
-
-    private void handleVpnEstablishFailure() {
-        LogHelper.log(getApplicationContext(), "Failed to establish VPN connection");
-        sendVpnStateBroadcast(false, "Failed to establish VPN connection");
-    }
-
-    private void handleVpnError(Exception e) {
-        LogHelper.log(getApplicationContext(), "Error in VPN connection: " + e.getMessage());
-        sendVpnStateBroadcast(false, "VPN connection error: " + e.getMessage());
-    }
-
-    private void cleanupVpnResources() {
-        stopVpn();
-    }
-
-    private ParcelFileDescriptor establishVpn() throws IOException {
-        Builder builder = new Builder();
-        configureVpnBuilder(builder);
-        return builder.establish();
-    }
-
-    private void configureVpnBuilder(Builder builder) {
-        builder.setSession(getString(R.string.app_name))
-                .setConfigureIntent(null)
-                .setBlocking(true)
-                .setMtu(1500);
-
-        configureVpnAddresses(builder);
-        configureDnsServers(builder);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            builder.setMetered(false);
-        }
-    }
-
-    private void configureVpnAddresses(Builder builder) {
-        if (!useDhcp && ipv4 != null && !ipv4.isEmpty()) {
-            builder.addAddress(ipv4, 24);
+    private String buildNotificationContent(boolean isEnglish) {
+        StringBuilder content = new StringBuilder();
+        content.append(protocol.label).append(" · ");
+        if (protocol == DnsProtocol.DOH && dohUrl != null && !dohUrl.isEmpty()) {
+            content.append(dohUrl);
+        } else if (protocol == DnsProtocol.DOT) {
+            String host = (hostname != null && !hostname.isEmpty()) ? hostname : dns1;
+            content.append(host).append(":").append(dnsPort);
         } else {
-            builder.addAddress("192.168.1.100", 24);
+            content.append(dns1);
+            if (dns2 != null && !dns2.isEmpty()) content.append(", ").append(dns2);
         }
-        
-        // Add default route for all traffic
-        builder.addRoute("0.0.0.0", 24);
-        
-        //IPv6 routes if IPv6
-        if (!ipv6Dns1.isEmpty() || !ipv6Dns2.isEmpty()) {
-            try {
-                builder.addRoute("::", 0);
-            } catch (Exception e) {
-                LogHelper.log(getApplicationContext(), "Failed to add IPv6 route: " + e.getMessage());
-            }
-        }
-    }
-
-    private void configureDnsServers(Builder builder) {
-        List<String> dnsServers = new ArrayList<>();
-        
-        // در صورتی که قابلیت TCP فعال باشد، ترافیک دی‌ان‌اس مستقیما به لوکال‌هاست و پروکسی فرستاده می‌شود
-        if (useTcp) {
-            dnsServers.add("127.0.0.1");
-        } else {
-            if (isValidDnsAddress(dns1)) dnsServers.add(dns1);
-            if (isValidDnsAddress(dns2)) dnsServers.add(dns2);
-            if (isValidDnsAddress(ipv6Dns1)) dnsServers.add(ipv6Dns1);
-            if (isValidDnsAddress(ipv6Dns2)) dnsServers.add(ipv6Dns2);
-        }
-
-        if (dnsServers.isEmpty()) {
-            dnsServers.add("8.8.8.8");
-        }
-
-        for (String dns : dnsServers) {
-            try {
-                builder.addDnsServer(dns);
-            } catch (Exception e) {
-                LogHelper.log(getApplicationContext(), "Failed to add DNS server " + dns + ": " + e.getMessage());
-            }
-        }
-    }
-
-    private boolean isValidDnsAddress(String address) {
-        if (address == null || address.isEmpty()) {
-            return false;
-        }
-        try {
-            InetAddress.getByName(address);
-            return true;
-        } catch (Exception e) {
-            LogHelper.log(getApplicationContext(), "Invalid DNS address: " + address);
-            return false;
-        }
+        return content.toString();
     }
 
     private void stopVpn() {
+        if (!isRunning && vpnInterface == null && engine == null && forwarder == null) {
+            return;
+        }
         isRunning = false;
-        LogHelper.log(getApplicationContext(), "Stopping VPN service completely");
-        
-        closeVpnInterface();
-        stopVpnThread();
-        stopDnsProxies();
-        stopForegroundService();
-        sendVpnStateBroadcast(false, null);
-        stopSelf();
-    }
-
-    private void closeVpnInterface() {
-        if (vpnInterface != null) {
-            try {
-                vpnInterface.close();
-                LogHelper.log(getApplicationContext(), "VPN interface closed");
-            } catch (IOException e) {
-                LogHelper.log(getApplicationContext(), "Error closing VPN interface: " + e.getMessage());
-            }
-            vpnInterface = null;
-        }
-    }
-
-    private void stopVpnThread() {
-        if (vpnThread != null) {
-            vpnThread.interrupt();
-            try {
-                vpnThread.join(1000);
-            } catch (InterruptedException e) {
-                LogHelper.log(getApplicationContext(), "Error stopping VPN thread: " + e.getMessage());
-            }
-            vpnThread = null;
-            LogHelper.log(getApplicationContext(), "VPN thread stopped");
-        }
-    }
-
-    private void stopDnsProxies() {
-        if (dnsTcpProxy != null) {
-            try {
-                dnsTcpProxy.shutdown();
-                LogHelper.log(getApplicationContext(), "DNS over TCP proxy stopped");
-            } catch (Exception e) {
-                LogHelper.log(getApplicationContext(), "Error stopping DNS over TCP proxy: " + e.getMessage());
-            }
-            dnsTcpProxy = null;
-        }
-
-    }
-
-    private void stopForegroundService() {
+        LogHelper.log(getApplicationContext(), "Stopping VPN");
+        final TunDnsForwarder f = forwarder;
+        final DnsQueryEngine e = engine;
+        final ParcelFileDescriptor iface = vpnInterface;
+        final Thread t = vpnThread;
+        forwarder = null;
+        engine = null;
+        vpnInterface = null;
+        vpnThread = null;
         try {
             stopForeground(true);
             NotificationManager manager = getSystemService(NotificationManager.class);
-            if (manager != null) {
-                manager.cancel(NOTIF_ID);
+            if (manager != null) manager.cancel(NOTIF_ID);
+        } catch (Exception ignored) {}
+        saveVpnState(false);
+        sendVpnStateBroadcast(false, null);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                if (f != null) {
+                    try { f.stop(); } catch (Exception ignored) {}
+                }
+                if (e != null) {
+                    try { e.shutdown(); } catch (Exception ignored) {}
+                }
+                if (iface != null) {
+                    try { iface.close(); } catch (Exception ignored) {}
+                }
+                if (t != null && t != Thread.currentThread()) {
+                    try { t.interrupt(); } catch (Exception ignored) {}
+                }
             }
-            LogHelper.log(getApplicationContext(), "Foreground service stopped");
-        } catch (Exception e) {
-            LogHelper.log(getApplicationContext(), "Error stopping foreground service: " + e.getMessage());
-        }
+        }, "VpnCleanup").start();
+        stopSelf();
     }
 
     private void saveVpnState(boolean isActive) {
-        SharedPreferences prefs = getSharedPreferences("vpn_prefs", Context.MODE_PRIVATE);
-        prefs.edit().putBoolean("vpn_active", isActive).apply();
-        LogHelper.log(getApplicationContext(), "VPN state saved: " + isActive);
+        getSharedPreferences("vpn_prefs", Context.MODE_PRIVATE)
+                .edit().putBoolean("vpn_active", isActive).apply();
     }
-    
-    
+
     private void sendVpnStateBroadcast(boolean isActive, String errorMessage) {
-        Intent intent = new Intent("VPN_STATE_CHANGED");
+        Intent intent = new Intent(ACTION_STATE);
+        intent.setPackage(getPackageName());
         intent.putExtra("isActive", isActive);
-        if (errorMessage != null) {
-            intent.putExtra("error", errorMessage);
-        }
+        intent.putExtra("protocol", protocol.label);
+        if (errorMessage != null) intent.putExtra("error", errorMessage);
         sendBroadcast(intent);
-        LogHelper.log(getApplicationContext(), "VPN state broadcast sent: " + isActive + 
-            (errorMessage != null ? " with error: " + errorMessage : ""));
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        LogHelper.log(getApplicationContext(), "VPN Service destroyed");
+        unregisterAutoReconnect();
+        stopVpn();
+    }
+
+    @Override
+    public void onRevoke() {
+        super.onRevoke();
         stopVpn();
     }
 
     public static boolean isRunning(Context context) {
         ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-        if (manager != null) {
-            for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-                if (MyVpnService.class.getName().equals(service.service.getClassName())) {
-                    return true;
-                }
+        if (manager == null) return false;
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (MyVpnService.class.getName().equals(service.service.getClassName())) {
+                return true;
             }
         }
         return false;

@@ -12,10 +12,8 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
-
 import java.util.List;
 
 public class ServerAdapter extends RecyclerView.Adapter<ServerAdapter.ServerViewHolder> {
@@ -58,28 +56,22 @@ public class ServerAdapter extends RecyclerView.Adapter<ServerAdapter.ServerView
 
     @Override
     public void onBindViewHolder(@NonNull ServerViewHolder holder, int position) {
-        DnsServer server = serverList.get(position);
+        final DnsServer server = serverList.get(position);
         holder.serverName.setText(server.getName());
+        if (holder.protocolBadge != null) {
+            holder.protocolBadge.setText(server.getProtocolEnum().label);
+            holder.protocolBadge.setVisibility(View.VISIBLE);
+        }
 
         StringBuilder dnsText = new StringBuilder();
-        dnsText.append("\nIPv4: ").append(server.getDns1());
-        if (!server.getDns2().isEmpty()) {
-            dnsText.append(" / ").append(server.getDns2());
-        }
-
-        if (!server.getIpv6Dns1().isEmpty()) {
-            dnsText.append("\nIPv6: ").append(server.getIpv6Dns1());
-            if (!server.getIpv6Dns2().isEmpty()) {
-                dnsText.append(" / ").append(server.getIpv6Dns2());
-            }
-        }
+        dnsText.append(server.getEndpointSummary());
 
         boolean isEnglish = prefs.getBoolean("english_language", false);
         if (server.isChecking()) {
             dnsText.append("\n").append(isEnglish ? "Ping: Checking..." : "پینگ: در حال بررسی...");
-            holder.dnsAddress.setTextColor(Color.parseColor("#EEEEEE"));
+            holder.dnsAddress.setTextColor(ThemeManager.getDefaultTextColor(holder.itemView.getContext()));
         } else if (server.getPing() >= 0) {
-            dnsText.append(isEnglish ? "\nPing:" : "\nپینگ:").append(server.getPing()).append("ms");
+            dnsText.append(isEnglish ? "\nPing: " : "\nپینگ: ").append(server.getPing()).append("ms");
             holder.dnsAddress.setTextColor(getPingColor(server.getPing()));
         } else {
             dnsText.append("\n").append(isEnglish ? "Ping: Failed" : "پینگ: ناموفق");
@@ -87,31 +79,39 @@ public class ServerAdapter extends RecyclerView.Adapter<ServerAdapter.ServerView
         }
 
         holder.dnsAddress.setText(dnsText.toString());
-        holder.itemView.setOnClickListener(v -> selectionListener.onServerSelected(server));
-        holder.itemView.setOnLongClickListener(v -> {
-            longClickListener.onLongClick(server);
-            return true;
+        holder.itemView.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { selectionListener.onServerSelected(server); }
+        });
+        holder.itemView.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override public boolean onLongClick(View v) {
+                longClickListener.onLongClick(server);
+                return true;
+            }
         });
 
-        holder.shareIcon.setOnClickListener(v -> {
-            String base = "dnschanger://add?";
-            StringBuilder link = new StringBuilder(base);
-            link.append("name=").append(Uri.encode(server.getName()));
-            link.append("&dns1=").append(Uri.encode(server.getDns1()));
+        holder.shareIcon.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                StringBuilder link = new StringBuilder("dnschanger://add?");
+                link.append("name=").append(Uri.encode(server.getName()));
+                link.append("&dns1=").append(Uri.encode(server.getDns1()));
+                if (!server.getDns2().isEmpty())
+                    link.append("&dns2=").append(Uri.encode(server.getDns2()));
+                if (!server.getIpv6Dns1().isEmpty())
+                    link.append("&ipv6dns1=").append(Uri.encode(server.getIpv6Dns1()));
+                if (!server.getIpv6Dns2().isEmpty())
+                    link.append("&ipv6dns2=").append(Uri.encode(server.getIpv6Dns2()));
+                link.append("&protocol=").append(Uri.encode(server.getProtocol()));
+                if (!server.getHostname().isEmpty())
+                    link.append("&hostname=").append(Uri.encode(server.getHostname()));
+                if (!server.getDohUrl().isEmpty())
+                    link.append("&doh=").append(Uri.encode(server.getDohUrl()));
+                link.append("&port=").append(server.getPort());
 
-            if (!server.getDns2().isEmpty())
-                link.append("&dns2=").append(Uri.encode(server.getDns2()));
-            if (!server.getIpv6Dns1().isEmpty())
-                link.append("&ipv6dns1=").append(Uri.encode(server.getIpv6Dns1()));
-            if (!server.getIpv6Dns2().isEmpty())
-                link.append("&ipv6dns2=").append(Uri.encode(server.getIpv6Dns2()));
-
-            ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
-            ClipData clip = ClipData.newPlainText("DNS Link", link.toString());
-            clipboard.setPrimaryClip(clip);
-
-            String toastText = isEnglish ? "Copied to clipboard" : "کپی شد";
-            Toast.makeText(context, toastText, Toast.LENGTH_SHORT).show();
+                ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+                clipboard.setPrimaryClip(ClipData.newPlainText("DNS Link", link.toString()));
+                Toast.makeText(context, isEnglish ? "Copied to clipboard" : "کپی شد", Toast.LENGTH_SHORT).show();
+            }
         });
     }
 
@@ -130,12 +130,14 @@ public class ServerAdapter extends RecyclerView.Adapter<ServerAdapter.ServerView
     static class ServerViewHolder extends RecyclerView.ViewHolder {
         TextView serverName;
         TextView dnsAddress;
+        TextView protocolBadge;
         ImageView shareIcon;
 
         public ServerViewHolder(@NonNull View itemView) {
             super(itemView);
             serverName = itemView.findViewById(R.id.server_name);
             dnsAddress = itemView.findViewById(R.id.dns_address);
+            protocolBadge = itemView.findViewById(R.id.protocol_badge);
             shareIcon = itemView.findViewById(R.id.share_icon);
         }
     }

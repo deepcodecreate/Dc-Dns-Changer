@@ -22,11 +22,8 @@ public class Utils {
 
         regexColorMap.put(Pattern.compile("\\b(false|log|Error|error|disconnectsd|Disconnected|Stopping|Disconnecting|Read|timed|out)\\b"), "#F44336");
 
-        //regexColorMap.put(Pattern.compile("\\b(ICMP|Logo|Loading|Activity|opening|created|Select|Opening|Initializing|Received)\\b"), "#FFC107");
-
         regexColorMap.put(Pattern.compile("\\b(DNS|VPN|TCP|DoH|HTTPS|port)\\b"), "#03A9F4");
 
-        //regexColorMap.put(Pattern.compile("\\b(Checking|Setting|Starting|Ping|ping|clicked|resumed|custom|Root|Showing|Status|mode)\\b"), "#FF9800");
         
         regexColorMap.put(Pattern.compile("\\b\\d+\\b"), "#FF9800");
 

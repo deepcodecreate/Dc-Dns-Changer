@@ -2,111 +2,143 @@ package dns.changer.deepcode;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.text.SpannableStringBuilder;
-import android.view.View;
-import android.widget.Button;
-import android.widget.ScrollView;
+import android.widget.TextView;
+
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.button.MaterialButton;
+
+import java.util.List;
 
 public class DnsLogActivity extends AppCompatActivity {
 
-    private ZoomableTextView logTextView;
-    private ScrollView scrollView;
-    private int logLimit = 1000;
+    private RecyclerView recyclerView;
+    private LogLineAdapter adapter;
+    private LinearLayoutManager layoutManager;
+    private TextView countLabel;
+    private MaterialButton clearButton;
+    private MaterialButton jumpBottomButton;
     private SharedPreferences prefs;
-    private Button clearButton;
+    private boolean stickToBottom = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
+
         prefs = getSharedPreferences("vpn_prefs", MODE_PRIVATE);
-        boolean isGrayTheme = prefs.getBoolean("gray_theme", false);
-        setTheme(isGrayTheme ? R.style.AppTheme_GrayMaterial : R.style.AppTheme);
-        
+        ThemeManager.applyTheme(this);
+
         setContentView(R.layout.activity_dns_log);
         initializeViews();
-        
-        logLimit = prefs.getInt("log_limit", 1000);
-        displayExistingLogs();
-        setupLogUpdateListener();
-        configureScrollView();
-        setupClearButton();
-    }
 
-    private void initializeViews() {
-        logTextView = findViewById(R.id.log_text_view);
-        scrollView = findViewById(R.id.log_scroll_view);
-        clearButton = findViewById(R.id.clear_log_button);
-    }
+        int logLimit = LogHelper.getLogLimit(this);
+        adapter = new LogLineAdapter();
+        adapter.setCap(logLimit);
+        layoutManager = new LinearLayoutManager(this);
+        recyclerView.setLayoutManager(layoutManager);
+        recyclerView.setAdapter(adapter);
+        recyclerView.setHasFixedSize(true);
+        recyclerView.setItemViewCacheSize(24);
 
-    private void displayExistingLogs() {
-        String logs = LogHelper.getLogs(this);
-        logTextView.setText(Utils.colorizeWords(logs));
+        List<String> initial = LogHelper.getLogLines(this);
+        adapter.setInitialLines(initial);
+        updateCountLabel();
         scrollToBottom();
-    }
 
-    private void setupLogUpdateListener() {
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(RecyclerView rv, int dx, int dy) {
+                int last = layoutManager.findLastVisibleItemPosition();
+                int total = adapter.getItemCount();
+                stickToBottom = total == 0 || last >= total - 2;
+                jumpBottomButton.setAlpha(stickToBottom ? 0.4f : 1f);
+            }
+        });
+
+        jumpBottomButton.setOnClickListener(v -> {
+            stickToBottom = true;
+            scrollToBottom();
+        });
+
+        clearButton.setOnClickListener(v -> {
+            LogHelper.clearLogs(this);
+            adapter.clearAll();
+            updateCountLabel();
+        });
+
         LogHelper.setLogUpdateListener(new LogHelper.LogUpdateListener() {
             @Override
             public void onLogUpdate(String newLog) {
-                updateLogText(newLog);
+                runOnUiThread(() -> {
+                    adapter.appendLine(newLog);
+                    updateCountLabel();
+                    if (stickToBottom) scrollToBottom();
+                });
             }
 
             @Override
             public void onLogsCleared() {
-                showLogClearedMessage();
+                runOnUiThread(() -> {
+                    adapter.clearAll();
+                    updateCountLabel();
+                });
             }
         });
     }
 
-    private void updateLogText(String newLog) {
-        runOnUiThread(() -> {
-            SpannableStringBuilder currentText = new SpannableStringBuilder(logTextView.getText());
-            
-            if (currentText.length() > 0) {
-                currentText.append("\n");
-            }
-            currentText.append(Utils.colorizeWords(newLog));
-            logTextView.setText(currentText);
-            
-            scrollToBottom();
-        });
+    private void initializeViews() {
+        recyclerView = findViewById(R.id.log_recycler_view);
+        clearButton = findViewById(R.id.clear_log_button);
+        jumpBottomButton = findViewById(R.id.jump_bottom_button);
+        countLabel = findViewById(R.id.log_count_label);
     }
 
-    private void showLogClearedMessage() {
-        runOnUiThread(() -> {
-            logTextView.setText(Utils.colorizeWords("← Logs Deleted " + logLimit + " Lines"));
-            scrollToBottom();
-        });
+    private void updateCountLabel() {
+        int count = adapter.getLineCount();
+        int cap = LogHelper.getLogLimit(this);
+        countLabel.setText(count + " / " + cap + (isEn() ? " lines" : " خط"));
     }
 
-    private void configureScrollView() {
-        scrollView.setHorizontalScrollBarEnabled(false);
-        scrollView.setVerticalScrollBarEnabled(false);
-        scrollView.setOverScrollMode(ScrollView.OVER_SCROLL_NEVER);
+    private boolean isEn() {
+        return getResources().getConfiguration().locale.getLanguage().equals("en");
     }
 
-    private void setupClearButton() {
-        clearButton.setOnClickListener(v -> {
-            LogHelper.clearLogs(this);
-            logTextView.setText("");
+    private void scrollToBottom() {
+        recyclerView.post(() -> {
+            int count = adapter.getItemCount();
+            if (count > 0) recyclerView.scrollToPosition(count - 1);
         });
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        setupLogUpdateListener();
+
+        LogHelper.setLogUpdateListener(new LogHelper.LogUpdateListener() {
+            @Override
+            public void onLogUpdate(String newLog) {
+                runOnUiThread(() -> {
+                    adapter.appendLine(newLog);
+                    updateCountLabel();
+                    if (stickToBottom) scrollToBottom();
+                });
+            }
+
+            @Override
+            public void onLogsCleared() {
+                runOnUiThread(() -> {
+                    adapter.clearAll();
+                    updateCountLabel();
+                });
+            }
+        });
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         LogHelper.clearListener();
-    }
-
-    private void scrollToBottom() {
-        scrollView.post(() -> scrollView.fullScroll(View.FOCUS_DOWN));
     }
 }

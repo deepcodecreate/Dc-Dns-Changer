@@ -11,6 +11,20 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Protocol"
+            android:textColor="?attr/colorAccent"
+            android:textSize="12sp"
+            android:layout_marginBottom="4dp"/>
+
+        <Spinner
+            android:id="@+id/protocol_spinner"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginBottom="12dp"/>
+
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/server_name_layout"
             android:layout_width="match_parent"
@@ -32,7 +46,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             style="@style/BaseTextInputLayout"
-            android:hint="Primary DNS"
+            android:hint="Primary DNS / IP"
             android:textColorHint="?attr/colorAccent"
             android:layout_marginBottom="12dp">
 
@@ -41,8 +55,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textColor="?attr/colorOnPrimary"
-                android:inputType="phone"
-                android:digits="0123456789."/>
+                android:inputType="text"/>
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
@@ -59,9 +72,40 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textColor="?attr/colorOnPrimary"
-                android:inputType="phone"
-                android:digits="0123456789."/>
+                android:inputType="text"/>
         </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/hostname_edittext"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:hint="DoT hostname"
+            android:textColorHint="?attr/colorAccent"
+            android:textColor="?attr/colorOnPrimary"
+            android:inputType="textUri"
+            android:visibility="gone"/>
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/doh_url_edittext"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:hint="DoH URL"
+            android:textColorHint="?attr/colorAccent"
+            android:textColor="?attr/colorOnPrimary"
+            android:inputType="textUri"
+            android:visibility="gone"/>
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/port_edittext"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:hint="Port"
+            android:textColorHint="?attr/colorAccent"
+            android:textColor="?attr/colorOnPrimary"
+            android:inputType="number"/>
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/ipv6_dns1_layout"
