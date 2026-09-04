@@ -1,3 +1,0 @@
--keep class dns.changer.deepcode.** { *; }
--dontwarn org.xbill.DNS.**
--keep class org.xbill.DNS.** { *; }
