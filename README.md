@@ -15,7 +15,7 @@
     <img src="https://img.shields.io/badge/License-Apache%202.0-blue?style=for-the-badge" alt="License"/>
   </a>
   <img src="https://img.shields.io/badge/Android-24%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android"/>
-  <img src="https://img.shields.io/badge/Version-4.1-orange?style=for-the-badge" alt="Version"/>
+  <img src="https://img.shields.io/badge/Version-4.0-orange?style=for-the-badge" alt="Version"/>
 </p>
 
 <p align="center">
