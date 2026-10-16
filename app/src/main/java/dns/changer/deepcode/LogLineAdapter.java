@@ -1,9 +1,13 @@
 package dns.changer.deepcode;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -51,6 +55,15 @@ public class LogLineAdapter extends RecyclerView.Adapter<LogLineAdapter.LineHold
         if (size > 0) notifyItemRangeRemoved(0, size);
     }
 
+    public String getAllLogsText() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < lines.size(); i++) {
+            if (i > 0) sb.append("\n");
+            sb.append(lines.get(i));
+        }
+        return sb.toString();
+    }
+
     public int getLineCount() {
         return lines.size();
     }
@@ -65,7 +78,18 @@ public class LogLineAdapter extends RecyclerView.Adapter<LogLineAdapter.LineHold
 
     @Override
     public void onBindViewHolder(@NonNull LineHolder holder, int position) {
-        holder.bind(position >= 0 && position < lines.size() ? lines.get(position) : "");
+        final String line = position >= 0 && position < lines.size() ? lines.get(position) : "";
+        holder.bind(line);
+        holder.itemView.setOnClickListener(v -> {
+            if (line.isEmpty()) return;
+            Context ctx = v.getContext();
+            ClipboardManager clipboard = (ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);
+            if (clipboard != null) {
+                clipboard.setPrimaryClip(ClipData.newPlainText("Log Line", line));
+                boolean isEn = ctx.getSharedPreferences("vpn_prefs", Context.MODE_PRIVATE).getBoolean("english_language", false);
+                Toast.makeText(ctx, isEn ? "Log line copied" : "خط لاگ کپی شد", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     @Override

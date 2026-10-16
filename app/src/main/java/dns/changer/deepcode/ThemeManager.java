@@ -2,7 +2,12 @@ package dns.changer.deepcode;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.util.TypedValue;
+import android.view.View;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.button.MaterialButtonToggleGroup;
 
 public final class ThemeManager {
 
@@ -110,8 +115,56 @@ public final class ThemeManager {
 
     public static int resolveColor(Context context, int attr) {
         TypedValue tv = new TypedValue();
-        context.getTheme().resolveAttribute(attr, tv, true);
-        return tv.data;
+        if (!context.getTheme().resolveAttribute(attr, tv, true)) return 0;
+        if (tv.resourceId != 0) {
+            try {
+                return context.getResources().getColor(tv.resourceId, context.getTheme());
+            } catch (Exception ignored) {
+                return 0;
+            }
+        }
+        if (tv.type >= TypedValue.TYPE_FIRST_COLOR_INT
+                && tv.type <= TypedValue.TYPE_LAST_COLOR_INT) {
+            return tv.data;
+        }
+        return 0;
+    }
+
+    /**
+     * Paints a MaterialButtonToggleGroup (the UDP / TCP / DoT / DoH selector) with the
+     * active app theme: the selected segment is filled with the theme accent, the rest
+     * are transparent with accent text and a soft accent outline.
+     *
+     * Colors are applied from code (same approach as the bottom navigation) instead of
+     * a theme-attribute color selector, which crashes on some MIUI builds.
+     */
+    public static void styleToggleGroup(Context context, MaterialButtonToggleGroup group) {
+        if (group == null) return;
+        ThemeDef def = byId(getSelectedId(context));
+        int accent = def.previewAccent;
+        int onAccent = def.previewOnAccent;
+        int stroke = (accent & 0x00FFFFFF) | 0x66000000;
+        int ripple = (accent & 0x00FFFFFF) | 0x33000000;
+
+        int[][] states = new int[][] {
+                new int[] { android.R.attr.state_checked },
+                new int[] {}
+        };
+        ColorStateList background = new ColorStateList(states, new int[] { accent, Color.TRANSPARENT });
+        ColorStateList content = new ColorStateList(states, new int[] { onAccent, accent });
+        ColorStateList outline = ColorStateList.valueOf(stroke);
+        ColorStateList rippleColor = ColorStateList.valueOf(ripple);
+
+        for (int i = 0; i < group.getChildCount(); i++) {
+            View child = group.getChildAt(i);
+            if (!(child instanceof MaterialButton)) continue;
+            MaterialButton button = (MaterialButton) child;
+            button.setBackgroundTintList(background);
+            button.setTextColor(content);
+            button.setIconTint(content);
+            button.setStrokeColor(outline);
+            button.setRippleColor(rippleColor);
+        }
     }
 
     public static void applyTheme(android.app.Activity activity) {

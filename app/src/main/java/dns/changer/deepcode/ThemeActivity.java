@@ -31,6 +31,8 @@ public class ThemeActivity extends BaseActivity {
 
         RecyclerView recyclerView = findViewById(R.id.theme_recycler_view);
         recyclerView.setLayoutManager(new GridLayoutManager(this, 2));
+        recyclerView.setLayoutAnimation(android.view.animation.AnimationUtils
+                .loadLayoutAnimation(this, R.anim.layout_animation_fall_in));
 
         int selectedId = ThemeManager.getSelectedId(this);
         ThemePreviewAdapter adapter = new ThemePreviewAdapter(
@@ -42,11 +44,13 @@ public class ThemeActivity extends BaseActivity {
                     }
                 });
         recyclerView.setAdapter(adapter);
+        recyclerView.scheduleLayoutAnimation();
     }
 
     private void finishWithResult() {
         setResult(changed ? Activity.RESULT_OK : Activity.RESULT_CANCELED);
         finish();
+        overridePendingTransition(R.anim.app_slide_in_left, R.anim.app_slide_out_right);
     }
 
     @Override

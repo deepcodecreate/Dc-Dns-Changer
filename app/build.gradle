@@ -10,8 +10,8 @@ android {
         applicationId "dns.changer.deepcode"
         minSdk 24
         targetSdk 34
-        versionCode 6
-        versionName "4.0"
+        versionCode 7
+        versionName "4.5"
 
         vectorDrawables {
             useSupportLibrary true
@@ -85,6 +85,8 @@ dependencies {
     implementation 'androidx.core:core-ktx:1.10.1'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.activity:activity-ktx:1.7.2'
+    implementation 'androidx.fragment:fragment-ktx:1.6.2'
+    implementation 'androidx.transition:transition:1.4.1'
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.databinding:databinding-runtime:8.0.0'

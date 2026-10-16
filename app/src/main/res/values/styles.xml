@@ -9,10 +9,10 @@
         <item name="colorAccent">#FFA88B</item>
         <item name="colorControlActivated">#FFA88B</item>
         <item name="colorControlHighlight">#352726</item>
-        <item name="colorControlNormal">#E1B382</item>
+        <item name="colorControlNormal">@color/theme_ember_control_normal</item>
         <item name="android:statusBarColor">#2B100E</item>
         <item name="dialogBackgroundColor">#1B100E</item>
-        <item name="android:navigationBarColor">#392726</item>
+        <item name="android:navigationBarColor">#120C0B</item>
     </style>
 
     <style name="AppTheme.GrayMaterial" parent="Theme.Material3.Dark.NoActionBar">
@@ -24,10 +24,10 @@
         <item name="colorAccent">#9E9E9E</item>
         <item name="colorControlActivated">#757575</item>
         <item name="colorControlHighlight">#616161</item>
-        <item name="colorControlNormal">#B0B0B0</item>
+        <item name="colorControlNormal">@color/theme_slate_control_normal</item>
         <item name="android:statusBarColor">#303030</item>
         <item name="dialogBackgroundColor">#424242</item>
-        <item name="android:navigationBarColor">#121212</item>
+        <item name="android:navigationBarColor">#212121</item>
     </style>
 
     <style name="AppTheme.Ember" parent="Theme.Material3.Dark.NoActionBar">
@@ -39,10 +39,10 @@
         <item name="colorAccent">#FFA88B</item>
         <item name="colorControlActivated">#FFA88B</item>
         <item name="colorControlHighlight">#352726</item>
-        <item name="colorControlNormal">#E1B382</item>
+        <item name="colorControlNormal">@color/theme_ember_control_normal</item>
         <item name="android:statusBarColor">#2B100E</item>
         <item name="dialogBackgroundColor">#1B100E</item>
-        <item name="android:navigationBarColor">#392726</item>
+        <item name="android:navigationBarColor">#120C0B</item>
     </style>
 
     <style name="AppTheme.Slate" parent="Theme.Material3.Dark.NoActionBar">
@@ -54,10 +54,10 @@
         <item name="colorAccent">#9E9E9E</item>
         <item name="colorControlActivated">#757575</item>
         <item name="colorControlHighlight">#616161</item>
-        <item name="colorControlNormal">#B0B0B0</item>
+        <item name="colorControlNormal">@color/theme_slate_control_normal</item>
         <item name="android:statusBarColor">#303030</item>
         <item name="dialogBackgroundColor">#424242</item>
-        <item name="android:navigationBarColor">#121212</item>
+        <item name="android:navigationBarColor">#212121</item>
     </style>
 
     <style name="AppTheme.Twilight" parent="Theme.Material3.Dark.NoActionBar">
@@ -69,7 +69,7 @@
         <item name="colorAccent">#00E5C7</item>
         <item name="colorControlActivated">#00E5C7</item>
         <item name="colorControlHighlight">#1D3A4F</item>
-        <item name="colorControlNormal">#8FD9CE</item>
+        <item name="colorControlNormal">@color/theme_twilight_control_normal</item>
         <item name="android:statusBarColor">#0D1B2A</item>
         <item name="dialogBackgroundColor">#13293D</item>
         <item name="android:navigationBarColor">#081119</item>
@@ -84,7 +84,7 @@
         <item name="colorAccent">#7C8CFF</item>
         <item name="colorControlActivated">#7C8CFF</item>
         <item name="colorControlHighlight">#1A1E2C</item>
-        <item name="colorControlNormal">#A9B0D6</item>
+        <item name="colorControlNormal">@color/theme_midnight_control_normal</item>
         <item name="android:statusBarColor">#05070D</item>
         <item name="dialogBackgroundColor">#10131C</item>
         <item name="android:navigationBarColor">#000000</item>
@@ -99,15 +99,16 @@
         <item name="colorAccent">#6B8F71</item>
         <item name="colorControlActivated">#6B8F71</item>
         <item name="colorControlHighlight">#E4D8BC</item>
-        <item name="colorControlNormal">#8A7A5C</item>
+        <item name="colorControlNormal">@color/theme_sand_control_normal</item>
         <item name="colorOnSurface">#3E2E1E</item>
         <item name="colorSurface">#FBF7EF</item>
-        <item name="android:textColorPrimary">#3E2E1E</item>
-        <item name="android:textColorSecondary">#5C4A3A</item>
+        <item name="android:textColorPrimary">@color/theme_sand_text_primary</item>
+        <item name="android:textColorSecondary">@color/theme_sand_text_secondary</item>
         <item name="android:statusBarColor">#F4EEE1</item>
         <item name="dialogBackgroundColor">#FBF7EF</item>
-        <item name="android:navigationBarColor">#EFE6D2</item>
+        <item name="android:navigationBarColor">#E4D8BC</item>
         <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+            <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
     </style>
 
     <style name="AppTheme.Sky" parent="Theme.Material3.Light.NoActionBar">
@@ -119,15 +120,16 @@
         <item name="colorAccent">#3E8FA6</item>
         <item name="colorControlActivated">#3E8FA6</item>
         <item name="colorControlHighlight">#C7DEE7</item>
-        <item name="colorControlNormal">#5B7D8A</item>
+        <item name="colorControlNormal">@color/theme_sky_control_normal</item>
         <item name="colorOnSurface">#0E3A4A</item>
         <item name="colorSurface">#FFFFFF</item>
-        <item name="android:textColorPrimary">#0E3A4A</item>
-        <item name="android:textColorSecondary">#3A5A6A</item>
+        <item name="android:textColorPrimary">@color/theme_sky_text_primary</item>
+        <item name="android:textColorSecondary">@color/theme_sky_text_secondary</item>
         <item name="android:statusBarColor">#E9F3F7</item>
         <item name="dialogBackgroundColor">#FFFFFF</item>
-        <item name="android:navigationBarColor">#DCEBF1</item>
+        <item name="android:navigationBarColor">#C7DEE7</item>
         <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+            <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
     </style>
 
     <style name="AppTheme.Autumn" parent="Theme.Material3.Light.NoActionBar">
@@ -139,15 +141,16 @@
         <item name="colorAccent">#DD6B20</item>
         <item name="colorControlActivated">#DD6B20</item>
         <item name="colorControlHighlight">#E8D5B5</item>
-        <item name="colorControlNormal">#9C6B3E</item>
+        <item name="colorControlNormal">@color/theme_autumn_control_normal</item>
         <item name="colorOnSurface">#5C3317</item>
         <item name="colorSurface">#FFFFFF</item>
-        <item name="android:textColorPrimary">#5C3317</item>
-        <item name="android:textColorSecondary">#7A4A2A</item>
+        <item name="android:textColorPrimary">@color/theme_autumn_text_primary</item>
+        <item name="android:textColorSecondary">@color/theme_autumn_text_secondary</item>
         <item name="android:statusBarColor">#FBF7F0</item>
         <item name="dialogBackgroundColor">#FFFFFF</item>
-        <item name="android:navigationBarColor">#F3E9D8</item>
+        <item name="android:navigationBarColor">#E8D5B5</item>
         <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+            <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
     </style>
 
     <style name="AppTheme.Neon" parent="Theme.Material3.Dark.NoActionBar">
@@ -159,7 +162,7 @@
         <item name="colorAccent">#39FF14</item>
         <item name="colorControlActivated">#39FF14</item>
         <item name="colorControlHighlight">#1F1F1F</item>
-        <item name="colorControlNormal">#7CFF63</item>
+        <item name="colorControlNormal">@color/theme_neon_control_normal</item>
         <item name="android:statusBarColor">#0A0A0A</item>
         <item name="dialogBackgroundColor">#161616</item>
         <item name="android:navigationBarColor">#000000</item>
@@ -174,7 +177,7 @@
         <item name="colorAccent">#64FFDA</item>
         <item name="colorControlActivated">#64FFDA</item>
         <item name="colorControlHighlight">#1B3A4B</item>
-        <item name="colorControlNormal">#8892B0</item>
+        <item name="colorControlNormal">@color/theme_ocean_control_normal</item>
         <item name="android:statusBarColor">#0A192F</item>
         <item name="dialogBackgroundColor">#112240</item>
         <item name="android:navigationBarColor">#020C1B</item>
@@ -189,7 +192,7 @@
         <item name="colorAccent">#FF8FAB</item>
         <item name="colorControlActivated">#FF8FAB</item>
         <item name="colorControlHighlight">#3D1F2E</item>
-        <item name="colorControlNormal">#E8A0B5</item>
+        <item name="colorControlNormal">@color/theme_rose_control_normal</item>
         <item name="android:statusBarColor">#1A0A12</item>
         <item name="dialogBackgroundColor">#2A1520</item>
         <item name="android:navigationBarColor">#0D0508</item>
@@ -204,7 +207,7 @@
         <item name="colorAccent">#A8E6CF</item>
         <item name="colorControlActivated">#A8E6CF</item>
         <item name="colorControlHighlight">#1F4035</item>
-        <item name="colorControlNormal">#8FBC8F</item>
+        <item name="colorControlNormal">@color/theme_forest_control_normal</item>
         <item name="android:statusBarColor">#0D1F17</item>
         <item name="dialogBackgroundColor">#163028</item>
         <item name="android:navigationBarColor">#06120D</item>
@@ -219,7 +222,7 @@
         <item name="colorAccent">#FFD54F</item>
         <item name="colorControlActivated">#FFD54F</item>
         <item name="colorControlHighlight">#3D3218</item>
-        <item name="colorControlNormal">#FFE082</item>
+        <item name="colorControlNormal">@color/theme_amber_control_normal</item>
         <item name="android:statusBarColor">#1A1408</item>
         <item name="dialogBackgroundColor">#2A2210</item>
         <item name="android:navigationBarColor">#0D0A04</item>
@@ -234,7 +237,7 @@
         <item name="colorAccent">#CE93D8</item>
         <item name="colorControlActivated">#CE93D8</item>
         <item name="colorControlHighlight">#2E1A45</item>
-        <item name="colorControlNormal">#E1BEE7</item>
+        <item name="colorControlNormal">@color/theme_violet_control_normal</item>
         <item name="android:statusBarColor">#120A1A</item>
         <item name="dialogBackgroundColor">#1E1230</item>
         <item name="android:navigationBarColor">#08040D</item>
@@ -249,7 +252,7 @@
         <item name="colorAccent">#FF6B6B</item>
         <item name="colorControlActivated">#FF6B6B</item>
         <item name="colorControlHighlight">#3D1818</item>
-        <item name="colorControlNormal">#FFABAB</item>
+        <item name="colorControlNormal">@color/theme_crimson_control_normal</item>
         <item name="android:statusBarColor">#1A0808</item>
         <item name="dialogBackgroundColor">#2A1010</item>
         <item name="android:navigationBarColor">#0D0404</item>
@@ -284,7 +287,7 @@
     <style name="BaseDialogTheme" parent="ThemeOverlay.Material3.MaterialAlertDialog">
         <item name="android:windowBackground">@drawable/dialog_background</item>
         <item name="android:background">@drawable/dialog_background</item>
-        <item name="android:forceDarkAllowed">true</item>
+        <item name="android:forceDarkAllowed">false</item>
         <item name="android:windowMinWidthMajor">90%</item>
         <item name="android:windowIsFloating">true</item>
         <item name="android:windowCloseOnTouchOutside">true</item>
@@ -293,9 +296,9 @@
     </style>
 
     <style name="CustomDialogTheme" parent="BaseDialogTheme">
-        <item name="android:textColor">#FFA88B</item>
-        <item name="android:textColorPrimary">#FFA88B</item>
-        <item name="android:textColorSecondary">#FFA88B</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:textColorPrimary">?attr/colorOnSurface</item>
+        <item name="android:textColorSecondary">?attr/colorAccent</item>
     </style>
 
     <style name="GrayDialogTheme" parent="BaseDialogTheme">
@@ -386,6 +389,30 @@
         <item name="actionBarTheme">@style/Widget.MaterialComponents.ActionBar.Primary</item>
         <item name="windowActionBar">true</item>
         <item name="windowNoTitle">false</item>
+    </style>
+
+    <style name="Widget.App.BottomNavigationView" parent="Widget.Material3.BottomNavigationView">
+        <item name="itemIconTint">@color/bottom_nav_item_color</item>
+        <item name="itemTextColor">@color/bottom_nav_item_color</item>
+        <item name="itemRippleColor">@android:color/transparent</item>
+        <item name="itemActiveIndicatorStyle">@style/Widget.App.BottomNavigationView.ActiveIndicator</item>
+        <item name="backgroundTint">?attr/colorPrimary</item>
+        <item name="elevation">8dp</item>
+        <item name="android:minHeight">64dp</item>
+        <item name="itemPaddingTop">3dp</item>
+        <item name="itemPaddingBottom">3dp</item>
+        <item name="labelVisibilityMode">labeled</item>
+        <item name="itemTextAppearanceActive">@style/TextAppearance.App.BottomNav</item>
+        <item name="itemTextAppearanceInactive">@style/TextAppearance.App.BottomNav</item>
+    </style>
+
+    <style name="Widget.App.BottomNavigationView.ActiveIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:color">@color/nav_indicator_tint</item>
+    </style>
+
+    <style name="TextAppearance.App.BottomNav" parent="TextAppearance.Material3.LabelMedium">
+        <item name="fontFamily">@font/appfont</item>
+        <item name="android:textSize">11sp</item>
     </style>
 
     <style name="AppTheme.GrayMaterial.DebugActivity" parent="AppTheme.GrayMaterial">

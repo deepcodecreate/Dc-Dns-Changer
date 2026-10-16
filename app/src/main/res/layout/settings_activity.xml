@@ -355,15 +355,6 @@
                         android:textColor="?attr/colorOnSurface"
                         android:textSize="14sp"
                         android:paddingVertical="8dp"/>
-
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/background_switch"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Keep running in background"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="14sp"
-                        android:paddingVertical="8dp"/>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

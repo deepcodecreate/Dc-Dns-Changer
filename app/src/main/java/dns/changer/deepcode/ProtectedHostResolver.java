@@ -29,6 +29,7 @@ final class ProtectedHostResolver {
     private final Context context;
     private final VpnService vpn;
     private final ConcurrentHashMap<String, CacheEntry> cache = new ConcurrentHashMap<>();
+    private volatile boolean emitLogs = true;
 
     private static final class CacheEntry {
         final List<String> ips;
@@ -39,6 +40,10 @@ final class ProtectedHostResolver {
     ProtectedHostResolver(Context context, VpnService vpn) {
         this.context = context;
         this.vpn = vpn;
+    }
+
+    void setLoggingEnabled(boolean enabled) {
+        emitLogs = enabled;
     }
 
     List<String> resolve(String host) {
@@ -65,6 +70,24 @@ final class ProtectedHostResolver {
         }
 
         if (cached != null && !cached.ips.isEmpty()) return filterPoison(cached.ips);
+        return result;
+    }
+
+    /** Cache + underlying-network lookup only (no slow UDP bootstrap round). */
+    List<String> resolveQuick(String host) {
+        if (host == null) return Collections.emptyList();
+        String h = host.trim();
+        if (h.isEmpty()) return Collections.emptyList();
+        if (HostValidator.isIpv4(h) || HostValidator.isIpv6(h)) {
+            return Collections.singletonList(h);
+        }
+        CacheEntry cached = cache.get(h);
+        if (cached != null && !cached.ips.isEmpty()
+                && System.currentTimeMillis() - cached.ts < CACHE_TTL_MS) {
+            return filterPoison(cached.ips);
+        }
+        List<String> result = filterPoison(resolveViaUnderlyingNetwork(h));
+        if (!result.isEmpty()) cache.put(h, new CacheEntry(result, System.currentTimeMillis()));
         return result;
     }
 
@@ -101,7 +124,9 @@ final class ProtectedHostResolver {
                 }
             }
         } catch (Exception e) {
-            LogHelper.log(context, "underlying-network resolve failed for " + host + ": " + e.getMessage());
+            if (!emitLogs) return out;
+            LogHelper.logRateLimited(context, "resolve-failed:" + host,
+                    "Network lookup unavailable", 15000L);
         }
         return out;
     }

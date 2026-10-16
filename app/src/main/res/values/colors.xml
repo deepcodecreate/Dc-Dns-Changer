@@ -11,4 +11,29 @@
     <color name="popup_background_gray">#212121</color>
     <color name="popup_text_color">#ffa88b</color>
     <color name="popup_text_color_gray">#FFEEEEEE</color>
+
+    <!-- Resource-backed control colors are required by Material's
+         NavigationBarMenuView when it builds its default ColorStateList. -->
+    <color name="theme_ember_control_normal">#E1B382</color>
+    <color name="theme_slate_control_normal">#B0B0B0</color>
+    <color name="theme_twilight_control_normal">#8FD9CE</color>
+    <color name="theme_midnight_control_normal">#A9B0D6</color>
+    <color name="theme_sand_control_normal">#8A7A5C</color>
+    <color name="theme_sky_control_normal">#5B7D8A</color>
+    <color name="theme_autumn_control_normal">#9C6B3E</color>
+    <!-- Material NavigationBar resolves textColorSecondary as a resource ID
+         on some MIUI builds. Keep these colors resource-backed. -->
+    <color name="theme_sand_text_primary">#3E2E1E</color>
+    <color name="theme_sand_text_secondary">#5C4A3A</color>
+    <color name="theme_sky_text_primary">#0E3A4A</color>
+    <color name="theme_sky_text_secondary">#3A5A6A</color>
+    <color name="theme_autumn_text_primary">#5C3317</color>
+    <color name="theme_autumn_text_secondary">#7A4A2A</color>
+    <color name="theme_neon_control_normal">#7CFF63</color>
+    <color name="theme_ocean_control_normal">#8892B0</color>
+    <color name="theme_rose_control_normal">#E8A0B5</color>
+    <color name="theme_forest_control_normal">#8FBC8F</color>
+    <color name="theme_amber_control_normal">#FFE082</color>
+    <color name="theme_violet_control_normal">#E1BEE7</color>
+    <color name="theme_crimson_control_normal">#FFABAB</color>
 </resources>

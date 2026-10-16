@@ -46,7 +46,7 @@ import java.util.Locale;
 public class SettingsActivity extends AppCompatActivity {
 
     private MaterialSwitch dhcpSwitch, rootSwitch, langSwitch;
-    private MaterialSwitch autoReconnectSwitch, backgroundSwitch;
+    private MaterialSwitch autoReconnectSwitch;
     private TextInputEditText ipv4Input, logLimitInput;
     private TextInputLayout ipv4Layout, logLimitLayout;
     private MaterialButton saveButton;
@@ -101,7 +101,6 @@ public class SettingsActivity extends AppCompatActivity {
         protocolLabel = findViewById(R.id.protocol_label);
         protocolToggleGroup = findViewById(R.id.protocol_toggle_group);
         autoReconnectSwitch = findViewById(R.id.auto_reconnect_switch);
-        backgroundSwitch = findViewById(R.id.background_switch);
         dotHostnameLayout = findViewById(R.id.dot_hostname_layout);
         dohUrlLayout = findViewById(R.id.doh_url_layout);
         dnsPortLayout = findViewById(R.id.dns_port_layout);
@@ -142,7 +141,6 @@ public class SettingsActivity extends AppCompatActivity {
         logLimitInput.setText(String.valueOf(prefs.getInt("log_limit", 1000)));
 
         autoReconnectSwitch.setChecked(prefs.getBoolean("auto_reconnect", true));
-        backgroundSwitch.setChecked(prefs.getBoolean("run_in_background", true));
 
         DnsProtocol protocol = DnsProtocol.from(prefs.getString("dns_protocol", "UDP"));
         setProtocolToggle(protocol);
@@ -207,7 +205,7 @@ public class SettingsActivity extends AppCompatActivity {
             }
         );
 
-        MaterialSwitch[] switches = {dhcpSwitch, rootSwitch, langSwitch, autoReconnectSwitch, backgroundSwitch};
+        MaterialSwitch[] switches = {dhcpSwitch, rootSwitch, langSwitch, autoReconnectSwitch};
         for (MaterialSwitch sw : switches) {
             if (sw != null) {
                 sw.setThumbTintList(thumbStateList);
@@ -249,11 +247,6 @@ public class SettingsActivity extends AppCompatActivity {
         autoReconnectSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isBindingSetup) return;
             prefs.edit().putBoolean("auto_reconnect", isChecked).apply();
-        });
-
-        backgroundSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isBindingSetup) return;
-            prefs.edit().putBoolean("run_in_background", isChecked).apply();
         });
 
         protocolToggleGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
@@ -457,7 +450,6 @@ public class SettingsActivity extends AppCompatActivity {
             dnsPortLayout.setHint("Port");
             dnsTimeoutLayout.setHint("Timeout (ms)");
             autoReconnectSwitch.setText("Auto-reconnect on network change");
-            backgroundSwitch.setText("Keep running in background");
         } else {
             settingsTitleText.setText("تنظیمات");
             dhcpSwitch.setText("اتصال DHCP (غیر ضروری)");
@@ -475,7 +467,6 @@ public class SettingsActivity extends AppCompatActivity {
             dnsPortLayout.setHint("پورت");
             dnsTimeoutLayout.setHint("مهلت زمانی (میلی‌ثانیه)");
             autoReconnectSwitch.setText("اتصال مجدد خودکار با تغییر شبکه");
-            backgroundSwitch.setText("فعال ماندن در پس‌زمینه");
         }
     }
 

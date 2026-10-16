@@ -297,7 +297,9 @@ public class ServerselectionActivity extends AppCompatActivity implements Server
             ArrayAdapter<String> spinAdapter = new ArrayAdapter<>(this,
                     android.R.layout.simple_spinner_dropdown_item,
                     new String[]{"UDP", "TCP", "DoT", "DoH"});
+            spinAdapter.setDropDownViewResource(R.layout.spinner_dropdown_item);
             protoSpinner.setAdapter(spinAdapter);
+            styleSpinnerPopup(protoSpinner);
             int idx = 0;
             for (int i = 0; i < protocols.length; i++) {
                 if (protocols[i] == currentProtocol) idx = i;
@@ -395,6 +397,26 @@ public class ServerselectionActivity extends AppCompatActivity implements Server
             .create();
         dialog.show();
         styleDialogButtons(dialog);
+    }
+
+    private void styleSpinnerPopup(Spinner spinner) {
+        TypedValue tv = new TypedValue();
+        int bg = 0xFF1B100E;
+        if (getTheme().resolveAttribute(R.attr.dialogBackgroundColor, tv, true)
+                && tv.type >= TypedValue.TYPE_FIRST_COLOR_INT && tv.type <= TypedValue.TYPE_LAST_COLOR_INT) {
+            bg = tv.data;
+        }
+        int accent = 0xFFFFA88B;
+        if (getTheme().resolveAttribute(android.R.attr.colorAccent, tv, true)) {
+            accent = tv.data;
+        }
+        int popupBg = androidx.core.graphics.ColorUtils.blendARGB(bg, accent, 0.08f);
+        float dp = getResources().getDisplayMetrics().density;
+        android.graphics.drawable.GradientDrawable d = new android.graphics.drawable.GradientDrawable();
+        d.setColor(popupBg);
+        d.setCornerRadius(16 * dp);
+        d.setStroke((int) Math.max(1, dp), androidx.core.graphics.ColorUtils.setAlphaComponent(accent, 90));
+        spinner.setPopupBackgroundDrawable(d);
     }
 
     private void styleDialogButtons(AlertDialog dialog) {

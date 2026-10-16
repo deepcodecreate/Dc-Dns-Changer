@@ -62,29 +62,26 @@ public class MyVpnService extends VpnService implements Runnable {
     @Override
     public void onCreate() {
         super.onCreate();
-        LogHelper.log(getApplicationContext(), "VPN Service created");
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && ACTION_STOP_VPN.equals(intent.getAction())) {
+            LogHelper.setSessionEnabled(getApplicationContext(), false);
             stopVpn();
             return START_NOT_STICKY;
         }
 
         SharedPreferences prefs = getSharedPreferences("vpn_prefs", Context.MODE_PRIVATE);
-        boolean runInBackground = prefs.getBoolean("run_in_background", true);
-        if (!runInBackground && !isRunning) {
-            stopSelf();
-            return START_NOT_STICKY;
-        }
-
         loadSettings(intent, prefs);
+        // Only an explicit running session may write to the in-app log.
+        // Constructing the service or opening the app remains silent.
+        LogHelper.setSessionEnabled(getApplicationContext(), true);
 
         try {
             startForegroundServiceWithNotification();
         } catch (SecurityException e) {
-            LogHelper.log(getApplicationContext(), "Foreground start failed: " + e.getMessage());
+            LogHelper.setSessionEnabled(getApplicationContext(), false);
             sendVpnStateBroadcast(false, "Missing notification permission");
             stopSelf();
             return START_NOT_STICKY;
@@ -180,12 +177,15 @@ public class MyVpnService extends VpnService implements Runnable {
             ipv4 = prefs.getString("ipv4_address", VPN_ADDR);
             useDhcp = prefs.getBoolean("use_dhcp", false);
         }
-        if (dns1 == null || dns1.isEmpty()) dns1 = "1.1.1.1";
+        // Only plain DNS needs a fallback resolver. For DoH/DoT an empty primary means "no
+        // bootstrap IP", and forcing 1.1.1.1 here made the endpoint unreachable on filtered networks.
+        if ((dns1 == null || dns1.isEmpty()) && (protocol == DnsProtocol.UDP || protocol == DnsProtocol.TCP)) {
+            dns1 = "1.1.1.1";
+        }
+        if (dns1 == null) dns1 = "";
         if (dns2 == null) dns2 = "";
         if (ipv6Dns1 == null) ipv6Dns1 = "";
         if (ipv6Dns2 == null) ipv6Dns2 = "";
-        LogHelper.log(getApplicationContext(),
-                "VPN start protocol=" + protocol.label + " dns1=" + dns1 + " host=" + hostname);
     }
 
     private boolean needsIntercept() {
@@ -358,7 +358,7 @@ public class MyVpnService extends VpnService implements Runnable {
                 this, 0, stopIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        Intent mainIntent = new Intent(this, DnschangerActivity.class);
+        Intent mainIntent = new Intent(this, MainActivity.class);
         mainIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent contentIntent = PendingIntent.getActivity(
                 this, 1, mainIntent,
@@ -397,7 +397,7 @@ public class MyVpnService extends VpnService implements Runnable {
             return;
         }
         isRunning = false;
-        LogHelper.log(getApplicationContext(), "Stopping VPN");
+        LogHelper.setSessionEnabled(getApplicationContext(), false);
         final TunDnsForwarder f = forwarder;
         final DnsQueryEngine e = engine;
         final ParcelFileDescriptor iface = vpnInterface;

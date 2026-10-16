@@ -14,6 +14,8 @@ public class DnsServer implements Parcelable {
     private String hostname;
     private String dohUrl;
     private int port;
+    /** Extra searchable text (e.g. every game a merged server serves). Not persisted. */
+    private transient String searchTags = "";
 
     public DnsServer(String name, String dns1, String dns2, String ipv6Dns1, String ipv6Dns2) {
         this(name, dns1, dns2, ipv6Dns1, ipv6Dns2, "UDP", "", "", 53);
@@ -101,6 +103,10 @@ public class DnsServer implements Parcelable {
         if (port > 0) return port;
         return getProtocolEnum().defaultPort;
     }
+
+    public String getSearchTags() { return searchTags == null ? "" : searchTags; }
+
+    public void setSearchTags(String tags) { this.searchTags = tags == null ? "" : tags; }
 
     public String getEndpointSummary() {
         DnsProtocol p = getProtocolEnum();

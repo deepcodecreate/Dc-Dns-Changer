@@ -12,6 +12,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -25,6 +27,7 @@ public class LogHelper {
 
     private static final String PREFS = "vpn_prefs";
     private static final String LIMIT_KEY = "log_limit";
+    private static final String SESSION_KEY = "log_session_enabled";
     private static final String LOG_FILE_NAME = "dns_log.txt";
     private static final int DEFAULT_LIMIT = 1000;
     private static final int HARD_CAP = 10000;
@@ -38,6 +41,7 @@ public class LogHelper {
     private static volatile boolean loaded = false;
     private static final AtomicInteger appendsSinceTrim = new AtomicInteger(0);
     private static final ExecutorService io = Executors.newSingleThreadExecutor();
+    private static final Map<String, Long> rateLimit = new ConcurrentHashMap<>();
 
     public static void init(Context context) {
         ensureLoaded(context);
@@ -45,6 +49,7 @@ public class LogHelper {
 
     public static void log(Context context, String message) {
         ensureLoaded(context);
+        if (!isSessionEnabled(context) || message == null || message.trim().isEmpty()) return;
         final String line = "[" + getCurrentTime() + "] " + message;
 
         synchronized (lock) {
@@ -58,6 +63,35 @@ public class LogHelper {
         io.execute(() -> appendToFile(appContext, line));
 
         if (listener != null) listener.onLogUpdate(line);
+    }
+
+    /**
+     * Writes at most one copy of a repeated event during the supplied window.
+     * DNS queries can arrive many times per second, so raw per-packet errors
+     * should never be allowed to fill the user-facing log.
+     */
+    public static void logRateLimited(Context context, String key, String message, long windowMs) {
+        if (key == null || key.trim().isEmpty()) {
+            log(context, message);
+            return;
+        }
+        long now = System.currentTimeMillis();
+        Long previous = rateLimit.putIfAbsent(key, now);
+        if (previous == null || now - previous >= Math.max(1000L, windowMs)) {
+            rateLimit.put(key, now);
+            log(context, message);
+        }
+    }
+
+    public static void setSessionEnabled(Context context, boolean enabled) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().putBoolean(SESSION_KEY, enabled).apply();
+        if (!enabled) rateLimit.clear();
+    }
+
+    private static boolean isSessionEnabled(Context context) {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean(SESSION_KEY, false);
     }
 
     
@@ -136,6 +170,7 @@ public class LogHelper {
 
                 byte[] bytes = line.getBytes(StandardCharsets.ISO_8859_1);
                 String decoded = new String(bytes, StandardCharsets.UTF_8);
+                if (isLegacyNoise(decoded)) continue;
                 loadedLines.addLast(decoded);
                 if (loadedLines.size() > limit) {
                     loadedLines.pollFirst();
@@ -145,6 +180,20 @@ public class LogHelper {
             buffer.addAll(loadedLines);
         } catch (IOException ignored) {
         }
+    }
+
+    private static boolean isLegacyNoise(String line) {
+        if (line == null) return true;
+        return line.contains(" query failed (")
+                || line.contains("DoH query failed:")
+                || line.contains("All UDP endpoints failed:")
+                || line.contains("All TCP endpoints failed:")
+                || line.contains("All DoT endpoints failed:")
+                || line.contains("All DoH endpoints failed:")
+                || line.contains("underlying-network resolve failed")
+                || line.contains("VPN Service created")
+                || line.contains("VPN start protocol=")
+                || line.contains("Stopping VPN");
     }
 
     private static void appendToFile(Context appContext, String line) {

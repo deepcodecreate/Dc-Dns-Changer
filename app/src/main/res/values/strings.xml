@@ -44,6 +44,10 @@
     <string name="status_connected">Status: Connected</string>
     <string name="status_disconnected">Status: Not connected</string>
     <string name="dns_not_active">DNS connection is not active</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_servers">Servers</string>
+    <string name="nav_log">Log</string>
+    <string name="nav_settings">Settings</string>
     <string name="enter_primary_dns_fa">لطفاً DNS اول را وارد کنید</string>
     <string name="dns_changed_success_fa">DNS با موفقیت تغییر کرد</string>
     <string name="dns_change_failed_fa">تغییر DNS ناموفق بود</string>

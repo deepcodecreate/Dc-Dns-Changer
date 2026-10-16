@@ -1,28 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:paddingHorizontal="16dp"
-    android:paddingVertical="12dp"
-    android:gravity="center_vertical"
-    android:background="?attr/selectableItemBackground"
-    android:layout_marginHorizontal="8dp"
-    android:layout_marginVertical="4dp">
+    android:layout_marginStart="12dp"
+    android:layout_marginTop="5dp"
+    android:layout_marginEnd="12dp"
+    android:layout_marginBottom="5dp"
+    android:foreground="?attr/selectableItemBackground"
+    app:cardBackgroundColor="?attr/colorPrimary"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="0dp"
+    app:strokeColor="?attr/colorControlHighlight"
+    app:strokeWidth="1dp">
 
     <LinearLayout
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:padding="14dp">
 
+        <!-- Top Header Row: Server Name + Protocol Badge + Share Button -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <TextView
                 android:id="@+id/server_name"
@@ -30,46 +34,43 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:textColor="?attr/colorAccent"
-                android:textStyle="bold"
-                android:textSize="16sp" />
+                android:textSize="15sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/protocol_badge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="2dp"
-                android:textSize="10sp"
-                android:textStyle="bold"
-                android:textColor="?attr/colorPrimaryDark"
+                android:layout_marginStart="8dp"
                 android:background="@drawable/protocol_badge"
-                android:text="UDP"/>
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="3dp"
+                android:text="UDP"
+                android:textColor="?attr/colorPrimaryDark"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:id="@+id/share_icon"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:padding="6dp"
+                android:src="@drawable/ic_share"
+                app:tint="?attr/colorAccent" />
         </LinearLayout>
 
+        <!-- Address & Ping Latency Info -->
         <TextView
             android:id="@+id/dns_address"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:alpha="0.9"
             android:textColor="?attr/colorOnPrimary"
-            android:alpha="0.8"
-            android:layout_marginTop="4dp"
-            android:textSize="12sp" />
-
-        <Space
-            android:layout_width="match_parent"
-            android:layout_height="12dp"/>
-
+            android:textSize="13sp" />
     </LinearLayout>
-
-    <ImageView
-        android:id="@+id/share_icon"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:padding="6dp"
-        android:src="@drawable/ic_share"
-        android:contentDescription="Share"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:tint="?attr/colorAccent"
-        android:layout_marginStart="8dp"/>
-
-</LinearLayout>
+</com.google.android.material.card.MaterialCardView>

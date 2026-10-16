@@ -1,7 +1,9 @@
 package dns.changer.deepcode;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public final class DnsCatalog {
     private DnsCatalog() {}
@@ -27,31 +29,32 @@ public final class DnsCatalog {
     }
 
     private static void addUdp(List<DnsServer> list) {
-        for (GamePair p : GAME_PAIRS) {
-            list.add(udp(p.label, p.a, p.b));
+        for (Group g : UNIQUE_GROUPS) {
+            DnsServer server = udp(g.name, g.a, g.b);
+            server.setSearchTags(tagsOf(g));
+            list.add(server);
         }
     }
 
     private static void addTcp(List<DnsServer> list) {
-        for (GamePair p : GAME_PAIRS) {
-            list.add(tcp(p.label, p.a, p.b));
+        for (Group g : UNIQUE_GROUPS) {
+            DnsServer server = tcp(g.name, g.a, g.b);
+            server.setSearchTags(tagsOf(g));
+            list.add(server);
         }
     }
 
+    // Encrypted DNS: only Iran-reachable providers.
     private static void addDot(List<DnsServer> list) {
-        list.add(dot("Cloudflare", "1.1.1.1", "1.0.0.1", "one.one.one.one", 853));
-        list.add(dot("Google", "8.8.8.8", "8.8.4.4", "dns.google", 853));
-        list.add(dot("Quad9", "9.9.9.9", "149.112.112.112", "dns.quad9.net", 853));
-        list.add(dot("AdGuard", "94.140.14.14", "94.140.15.15", "dns.adguard-dns.com", 853));
         list.add(dot("Vanilla", "194.146.68.68", "194.146.68.66", "dns.vanillapp.ir", 853));
+        // No hardcoded bootstrap IP: that IP was found to be serving an expired certificate
+        // (a stale/decommissioned backend), so the hostname is resolved live instead.
+        list.add(dot("Shecan", "", "", "free.shecan.ir", 853));
     }
 
     private static void addDoh(List<DnsServer> list) {
-        list.add(doh("Cloudflare", "1.1.1.1", "1.0.0.1", "https://cloudflare-dns.com/dns-query"));
-        list.add(doh("Google", "8.8.8.8", "8.8.4.4", "https://dns.google/dns-query"));
-        list.add(doh("Quad9", "9.9.9.9", "149.112.112.112", "https://dns.quad9.net/dns-query"));
-        list.add(doh("AdGuard", "94.140.14.14", "94.140.15.15", "https://dns.adguard-dns.com/dns-query"));
         list.add(doh("Vanilla", "194.146.68.68", "194.146.68.66", "https://dns.vanillapp.ir/dns-query"));
+        list.add(doh("Shecan", "", "", "https://free.shecan.ir/dns-query"));
     }
 
     private static DnsServer udp(String name, String a, String b) {
@@ -71,10 +74,12 @@ public final class DnsCatalog {
     }
 
     private static final class GamePair {
+        final String game;
         final String label;
         final String a;
         final String b;
-        GamePair(String label, String a, String b) {
+        GamePair(String game, String label, String a, String b) {
+            this.game = game;
             this.label = label;
             this.a = a;
             this.b = b;
@@ -85,12 +90,79 @@ public final class DnsCatalog {
         GamePair[] out = new GamePair[pairs.length];
         for (int i = 0; i < pairs.length; i++) {
             String label = pairs.length > 1 ? game + " #" + (i + 1) : game;
-            out[i] = new GamePair(label, pairs[i][0], pairs[i][1]);
+            out[i] = new GamePair(game, label, pairs[i][0], pairs[i][1]);
         }
         return out;
     }
 
     private static final List<GamePair> GAME_PAIRS = buildGamePairs();
+
+    /** One unique DNS pair (order-insensitive) and every game that uses it. */
+    private static final class Group {
+        final String a;
+        final String b;
+        final List<String> games = new ArrayList<>();
+        String name;
+        Group(String a, String b) {
+            this.a = a;
+            this.b = b;
+        }
+    }
+
+    private static final List<Group> UNIQUE_GROUPS = buildUniqueGroups();
+
+    private static List<Group> buildUniqueGroups() {
+        Map<String, Group> map = new LinkedHashMap<>();
+        for (GamePair p : GAME_PAIRS) {
+            String key = p.a.compareTo(p.b) <= 0 ? p.a + "|" + p.b : p.b + "|" + p.a;
+            Group g = map.get(key);
+            if (g == null) {
+                g = new Group(p.a, p.b);
+                map.put(key, g);
+            }
+            if (!g.games.contains(p.game)) g.games.add(p.game);
+        }
+
+        List<Group> groups = new ArrayList<>(map.values());
+        Map<String, Integer> nameCount = new LinkedHashMap<>();
+        for (Group g : groups) {
+            g.name = displayName(g);
+            Integer c = nameCount.get(g.name);
+            nameCount.put(g.name, c == null ? 1 : c + 1);
+        }
+        // Same name on several different pairs (e.g. three adult-block resolvers): number them.
+        Map<String, Integer> seen = new LinkedHashMap<>();
+        for (Group g : groups) {
+            if (nameCount.get(g.name) > 1) {
+                Integer n = seen.get(g.name);
+                n = n == null ? 1 : n + 1;
+                seen.put(g.name, n);
+                g.name = g.name + " #" + n;
+            }
+        }
+        return groups;
+    }
+
+    private static String tagsOf(Group g) {
+        StringBuilder sb = new StringBuilder();
+        for (String game : g.games) {
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(game);
+        }
+        return sb.toString();
+    }
+
+    private static String displayName(Group g) {
+        if (g.games.size() == 1) return g.games.get(0);
+        int shown = Math.min(3, g.games.size());
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < shown; i++) {
+            if (i > 0) sb.append(" · ");
+            sb.append(g.games.get(i));
+        }
+        if (g.games.size() > shown) sb.append(" +").append(g.games.size() - shown);
+        return sb.toString();
+    }
 
     private static List<GamePair> buildGamePairs() {
         List<GamePair> out = new ArrayList<>();

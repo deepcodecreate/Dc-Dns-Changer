@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+         Keep the inflate-time fallback self-contained. Resolving theme
+         attributes from a ColorStateList makes some MIUI/Android versions
+         pass resource ID 0 to NavigationBarMenuView for light themes.
+         MainActivity replaces this list with the selected theme colors
+         immediately after inflation.
+    -->
+    <item android:color="#1C1B1F" android:state_checked="true" />
+    <item android:color="#6F6B75" android:state_checked="false" />
+</selector>

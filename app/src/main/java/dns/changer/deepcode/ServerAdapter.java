@@ -5,6 +5,12 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.text.Spannable;
+import android.text.SpannableStringBuilder;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
 import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,6 +19,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
 
@@ -47,6 +54,27 @@ public class ServerAdapter extends RecyclerView.Adapter<ServerAdapter.ServerView
         notifyDataSetChanged();
     }
 
+    /** Swaps in a filtered list and animates inserts, removals and moves. */
+    public void submitFiltered(List<DnsServer> newList) {
+        final List<DnsServer> oldList = this.serverList;
+        DiffUtil.DiffResult result = DiffUtil.calculateDiff(new DiffUtil.Callback() {
+            @Override public int getOldListSize() { return oldList.size(); }
+            @Override public int getNewListSize() { return newList.size(); }
+            @Override public boolean areItemsTheSame(int o, int n) {
+                return key(oldList.get(o)).equals(key(newList.get(n)));
+            }
+            @Override public boolean areContentsTheSame(int o, int n) {
+                return oldList.get(o).getPing() == newList.get(n).getPing();
+            }
+        });
+        this.serverList = newList;
+        result.dispatchUpdatesTo(this);
+    }
+
+    private static String key(DnsServer s) {
+        return s.getProtocol() + "|" + s.getName() + "|" + s.getDns1() + "|" + s.getHostname() + "|" + s.getDohUrl();
+    }
+
     @NonNull
     @Override
     public ServerViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -60,25 +88,45 @@ public class ServerAdapter extends RecyclerView.Adapter<ServerAdapter.ServerView
         holder.serverName.setText(server.getName());
         if (holder.protocolBadge != null) {
             holder.protocolBadge.setText(server.getProtocolEnum().label);
+            ThemeManager.ThemeDef theme = ThemeManager.byId(
+                    ThemeManager.getSelectedId(holder.itemView.getContext()));
+            GradientDrawable badgeBackground = new GradientDrawable();
+            badgeBackground.setShape(GradientDrawable.RECTANGLE);
+            badgeBackground.setColor(theme.previewAccent);
+            badgeBackground.setCornerRadius(8f * holder.itemView.getResources()
+                    .getDisplayMetrics().density);
+            holder.protocolBadge.setBackground(badgeBackground);
+            holder.protocolBadge.setTextColor(theme.previewOnAccent);
             holder.protocolBadge.setVisibility(View.VISIBLE);
         }
 
-        StringBuilder dnsText = new StringBuilder();
-        dnsText.append(server.getEndpointSummary());
+        SpannableStringBuilder sb = new SpannableStringBuilder();
+        sb.append(server.getEndpointSummary());
 
         boolean isEnglish = prefs.getBoolean("english_language", false);
         if (server.isChecking()) {
-            dnsText.append("\n").append(isEnglish ? "Ping: Checking..." : "پینگ: در حال بررسی...");
-            holder.dnsAddress.setTextColor(ThemeManager.getDefaultTextColor(holder.itemView.getContext()));
+            String checkStr = "\n" + (isEnglish ? "Ping: Checking..." : "پینگ: در حال بررسی...");
+            int start = sb.length();
+            sb.append(checkStr);
+            sb.setSpan(new ForegroundColorSpan(ThemeManager.getDefaultTextColor(holder.itemView.getContext())),
+                    start, sb.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         } else if (server.getPing() >= 0) {
-            dnsText.append(isEnglish ? "\nPing: " : "\nپینگ: ").append(server.getPing()).append("ms");
-            holder.dnsAddress.setTextColor(getPingColor(server.getPing()));
+            String pingStr = "\n" + (isEnglish ? "Ping: " : "پینگ: ") + server.getPing() + "ms";
+            int start = sb.length();
+            sb.append(pingStr);
+            sb.setSpan(new ForegroundColorSpan(getPingColor(server.getPing())),
+                    start, sb.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            sb.setSpan(new StyleSpan(Typeface.BOLD),
+                    start, sb.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         } else {
-            dnsText.append("\n").append(isEnglish ? "Ping: Failed" : "پینگ: ناموفق");
-            holder.dnsAddress.setTextColor(Color.parseColor("#FF0000"));
+            String failStr = "\n" + (isEnglish ? "Ping: Failed" : "پینگ: ناموفق");
+            int start = sb.length();
+            sb.append(failStr);
+            sb.setSpan(new ForegroundColorSpan(Color.parseColor("#FF5252")),
+                    start, sb.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
 
-        holder.dnsAddress.setText(dnsText.toString());
+        holder.dnsAddress.setText(sb);
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { selectionListener.onServerSelected(server); }
         });
