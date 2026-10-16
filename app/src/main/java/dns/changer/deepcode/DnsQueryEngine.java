@@ -42,7 +42,6 @@ public class DnsQueryEngine {
     private static final MediaType DNS_MESSAGE = MediaType.parse("application/dns-message");
     private static volatile int TIMEOUT_MS = 4000;
 
-    
     public static void configureTimeoutMs(int ms) {
         if (ms >= 1000 && ms <= 15000) TIMEOUT_MS = ms;
     }
@@ -88,8 +87,7 @@ public class DnsQueryEngine {
 
     public byte[] query(byte[] dnsMessage) {
         byte[] response = queryInternal(dnsMessage);
-        // Some DoH/DoT servers answer with a different (often zero) transaction ID. The system
-        // resolver silently drops such answers, so always echo the ID of the original question.
+
         if (response != null && response.length >= 12 && dnsMessage != null && dnsMessage.length >= 2) {
             response[0] = dnsMessage[0];
             response[1] = dnsMessage[1];
@@ -130,7 +128,7 @@ public class DnsQueryEngine {
                 last = e;
             }
         }
-        // DoT: the configured IPs may not actually host the TLS name; try what the hostname resolves to.
+
         if (protocol == DnsProtocol.DOT && hostname != null && !hostname.trim().isEmpty()) {
             for (String ip : resolver.resolveQuick(hostname.trim())) {
                 if (!tried.add(ip)) continue;
@@ -153,9 +151,7 @@ public class DnsQueryEngine {
 
     private static String describe(Exception e) {
         if (e == null) return "no response";
-        // The message on the outer SSLHandshakeException ("Chain validation failed") is generic.
-        // The real reason lives further down the cause chain, in a CertPathValidatorException,
-        // whose getReason() says exactly what failed (NO_TRUST_ANCHOR, EXPIRED, REVOKED, ...).
+
         StringBuilder sb = new StringBuilder();
         Throwable t = e;
         int depth = 0;
@@ -179,7 +175,6 @@ public class DnsQueryEngine {
         return sb.length() > 0 ? sb.toString() : "no response";
     }
 
-    
     private String[] effectiveTargets() {
         List<String> out = new ArrayList<>();
         addResolvedTarget(out, primary);
@@ -209,7 +204,6 @@ public class DnsQueryEngine {
         return (int) Math.max(1, System.currentTimeMillis() - t0);
     }
 
-    /** UI ping probes are diagnostics and should not fill the user-facing log. */
     public void setLoggingEnabled(boolean enabled) {
         emitLogs = enabled;
         resolver.setLoggingEnabled(enabled);
@@ -291,12 +285,7 @@ public class DnsQueryEngine {
             return existing;
         }
         String sni = (hostname != null && !hostname.isEmpty()) ? hostname : ip;
-        // Connect the SSLSocket directly rather than layering it over a separately-connected
-        // plain Socket. The older layered form (SSLSocketFactory.createSocket(Socket, host,
-        // port, autoClose)) has known cross-OEM inconsistencies in how the SNI / hostname it is
-        // given gets applied; a direct, unconnected SSLSocket with SNI and endpoint identification
-        // set explicitly via SSLParameters is the documented, reliable way (the same mechanism
-        // OkHttp and Netty use internally) and behaves the same on every vendor build.
+
         SSLSocket ssl = null;
         try {
             SSLSocketFactory factory = AppTrustManager.socketFactory(context);
@@ -312,8 +301,7 @@ public class DnsQueryEngine {
             ssl.startHandshake();
         } catch (Exception e) {
             closeQuietly(ssl);
-            // Diagnostics only: reveals whether the failure is a DPI block page / wrong IP
-            // (unrelated certificate) versus a real, but untrusted, certificate for this host.
+
             if (isCertError(e)) {
                 logPresentedCertificate(ip, sni);
             }
@@ -333,10 +321,6 @@ public class DnsQueryEngine {
                 || cls.contains("SSLPeerUnverifiedException");
     }
 
-    /**
-     * Connects once more with certificate validation turned off, purely to log what the
-     * server actually presented. Never used for the real query — only for the log line.
-     */
     private void logPresentedCertificate(String ip, String sni) {
         SSLSocket ssl = null;
         try {
@@ -356,9 +340,7 @@ public class DnsQueryEngine {
             ssl.startHandshake();
             X509Certificate[] chain = (X509Certificate[]) ssl.getSession().getPeerCertificates();
             if (chain.length > 0 && emitLogs) {
-                // Log every certificate the server actually sent, in order. This is what tells
-                // us whether the server sent a complete chain (leaf + intermediate) or only the
-                // leaf, which is the key fact for diagnosing a "chain validation failed" error.
+
                 StringBuilder sb = new StringBuilder();
                 sb.append("Server ").append(ip).append(" sent ").append(chain.length)
                         .append(" cert(s): ");
@@ -369,13 +351,12 @@ public class DnsQueryEngine {
                 LogHelper.logRateLimited(context, "dot-cert-peek:" + ip, sb.toString(), 60000L);
             }
         } catch (Exception ignored) {
-            // The connection itself failing here is its own answer (e.g. blocked at TCP level).
+
         } finally {
             closeQuietly(ssl);
         }
     }
 
-    /** Set once a server proved it only accepts RFC 8484 GET requests. */
     private volatile boolean dohPreferGet = false;
 
     private static final class DohHttpException extends IOException {
@@ -397,7 +378,7 @@ public class DnsQueryEngine {
         try {
             return dohPost(url, dnsMessage);
         } catch (DohHttpException postError) {
-            // The server is reachable but rejected POST (e.g. 400/405/415): try GET (RFC 8484).
+
             try {
                 byte[] r = dohGet(url, dnsMessage);
                 dohPreferGet = true;
@@ -458,7 +439,6 @@ public class DnsQueryEngine {
         return httpClient;
     }
 
-    
     private final class ProtectedDns implements Dns {
         @Override
         public List<InetAddress> lookup(String hostname) throws UnknownHostException {
@@ -472,8 +452,7 @@ public class DnsQueryEngine {
                 }
             }
             if (protocol == DnsProtocol.DOH) {
-                // Bootstrap IPs first, then whatever the DoH host really resolves to, so a
-                // bootstrap IP that does not serve HTTPS no longer breaks the endpoint.
+
                 for (String ip : resolver.resolveQuick(hostname)) {
                     if (!ips.contains(ip)) ips.add(ip);
                 }
@@ -503,8 +482,6 @@ public class DnsQueryEngine {
         out.write(dnsMessage);
         out.flush();
 
-        // A closed / half-closed connection must surface as an exception: the DoT pool
-        // then drops the dead socket and reconnects instead of failing on it forever.
         int b1 = in.read();
         int b2 = in.read();
         if (b1 < 0 || b2 < 0) throw new EOFException("connection closed by server");

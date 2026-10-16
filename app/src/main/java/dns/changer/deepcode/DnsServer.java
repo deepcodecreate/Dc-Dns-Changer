@@ -9,12 +9,12 @@ public class DnsServer implements Parcelable {
     private String dns2;
     private String ipv6Dns1;
     private String ipv6Dns2;
-    private int ping = -2; // -2: not checked, -1: checking, >=0: ping value
+    private int ping = -2;
     private String protocol;
     private String hostname;
     private String dohUrl;
     private int port;
-    /** Extra searchable text (e.g. every game a merged server serves). Not persisted. */
+
     private transient String searchTags = "";
 
     public DnsServer(String name, String dns1, String dns2, String ipv6Dns1, String ipv6Dns2) {

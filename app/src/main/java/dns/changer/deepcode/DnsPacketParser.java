@@ -55,8 +55,8 @@ public class DnsPacketParser {
             int id = new Random().nextInt(0xFFFF);
             out.write((id >> 8) & 0xFF);
             out.write(id & 0xFF);
-            out.write(0x01); out.write(0x00); // recursion desired
-            out.write(0x00); out.write(0x01); // QD
+            out.write(0x01); out.write(0x00);
+            out.write(0x00); out.write(0x01);
             out.write(0x00); out.write(0x00);
             out.write(0x00); out.write(0x00);
             out.write(0x00); out.write(0x00);

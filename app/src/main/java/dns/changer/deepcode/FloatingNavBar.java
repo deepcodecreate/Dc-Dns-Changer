@@ -22,14 +22,6 @@ import androidx.core.content.res.ResourcesCompat;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Floating "capsule" tab bar in the style of the new Telegram navigation:
- * a rounded pill that hovers above the screen bottom, with a soft capsule
- * that slides behind the selected tab.
- *
- * Colors are pushed in from code (setColors) instead of theme-attribute
- * selectors, which keeps it safe on MIUI builds.
- */
 public class FloatingNavBar extends FrameLayout {
 
     public interface OnItemSelectedListener {
@@ -106,11 +98,6 @@ public class FloatingNavBar extends FrameLayout {
         this.listener = l;
     }
 
-    /**
-     * @param bg      the theme's header/surface color
-     * @param accentC the theme accent color
-     * @param light   true for light themes
-     */
     public void setColors(int bg, int accentC, boolean light) {
         accent = accentC;
         barColor = light ? bg : blend(bg, accentC, 0.07f);
@@ -168,7 +155,6 @@ public class FloatingNavBar extends FrameLayout {
         tintItem(it, it.id == selectedId, false);
     }
 
-    /** Like BottomNavigationView: notifies the listener, then selects when it accepts. */
     public void setSelectedItemId(int id) {
         if (id == selectedId) return;
         if (find(id) == null) return;
@@ -276,7 +262,6 @@ public class FloatingNavBar extends FrameLayout {
         return (color & 0x00FFFFFF) | (alpha << 24);
     }
 
-    /** t = 0 -> a, t = 1 -> b (opaque result). */
     private static int blend(int a, int b, float t) {
         int r = Math.round(((a >> 16) & 0xFF) * (1 - t) + ((b >> 16) & 0xFF) * t);
         int g = Math.round(((a >> 8) & 0xFF) * (1 - t) + ((b >> 8) & 0xFF) * t);

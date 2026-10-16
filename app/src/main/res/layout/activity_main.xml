@@ -16,8 +16,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toTopOf="@id/bottom_nav" />
 
-    <!-- Floating capsule tab bar (Telegram-style). The area around it is the
-         window background, which now matches the system navigation bar. -->
     <dns.changer.deepcode.FloatingNavBar
         android:id="@+id/bottom_nav"
         android:layout_width="0dp"

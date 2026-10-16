@@ -93,7 +93,6 @@ public class SettingsFragment extends Fragment {
         updateUIForLanguage();
     }
 
-    /** Wraps each settings block in its own collapsible, animated card section. */
     private void setupAccordion() {
         setupSection(headerVpnMode, bodyVpnMode, chevronVpnMode, false);
         setupSection(headerAppearance, bodyAppearance, chevronAppearance, false);
@@ -335,7 +334,6 @@ public class SettingsFragment extends Fragment {
         saveButton.setOnClickListener(v -> saveConnectionSettings());
     }
 
-    /** True while DNS protection is active (VPN service running, or root DNS applied). */
     private boolean isConnected() {
         if (!prefs.getBoolean("vpn_active", false)) return false;
         if (prefs.getBoolean("root_mode", false)) return true;
@@ -345,8 +343,8 @@ public class SettingsFragment extends Fragment {
     private void showRootWarningDialog() {
         AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext(), R.style.CustomDialogTheme)
                 .setTitle(isEnglish ? "Root Mode Activation" : "فعالسازی حالت روت")
-                .setMessage(isEnglish ? 
-                    "Root mode requires superuser privileges. It changes system DNS directly without using Android VpnService. Proceed?" : 
+                .setMessage(isEnglish ?
+                    "Root mode requires superuser privileges. It changes system DNS directly without using Android VpnService. Proceed?" :
                     "حالت روت نیازمند دسترسی سوپریوزر است. این ویژگی دی‌ان‌اس سیستم را مستقیما تغییر می‌دهد و از سرویس وی‌پی‌ان استفاده نمی‌کند. ادامه می‌دهید؟")
                 .setPositiveButton(isEnglish ? "Grant & Activate" : "اعطای دسترسی و فعالسازی", (d, w) -> {
                     checkAndRequestRootAccess();
@@ -413,8 +411,8 @@ public class SettingsFragment extends Fragment {
             if (pm != null && !pm.isIgnoringBatteryOptimizations(requireContext().getPackageName())) {
                 AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext(), R.style.CustomDialogTheme)
                         .setTitle(isEnglish ? "Battery Optimization & Background Alive" : "بهینه‌سازی باتری و فعالیت پس‌زمینه")
-                        .setMessage(isEnglish ? 
-                            "Please disable battery optimization and allow background persistence (Always Active) to prevent Android from killing network routing modules." : 
+                        .setMessage(isEnglish ?
+                            "Please disable battery optimization and allow background persistence (Always Active) to prevent Android from killing network routing modules." :
                             "لطفا بهینه‌سازی باتری را غیرفعال کرده و اجازه فعالیت در پس‌زمینه (همیشه فعال) را صادر کنید تا از بسته شدن ماژول‌های مسیریابی توسط سیستم جلوگیری شود.")
                         .setPositiveButton(isEnglish ? "Configure Alive & Auto-Start" : "تنظیم پایداری و شروع خودکار", (d, w) -> {
                             openBatterySettings();
@@ -449,8 +447,8 @@ public class SettingsFragment extends Fragment {
     private void showStartupAndAutostartDialog() {
         AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext(), R.style.CustomDialogTheme)
                 .setTitle(isEnglish ? "Startup & Auto-Start Config" : "تنظیمات شروع با استارتاپ")
-                .setMessage(isEnglish ? 
-                    "To guarantee core operations launch automatically upon system boot up, check auto-start permissions." : 
+                .setMessage(isEnglish ?
+                    "To guarantee core operations launch automatically upon system boot up, check auto-start permissions." :
                     "برای تضمین اجرای خودکار سرویس دی‌ان‌اس بلافاصله پس از بوت شدن و بالا آمدن دستگاه، دسترسی شروع خودکار را بررسی کنید.")
                 .setPositiveButton(isEnglish ? "Open Boot Manager" : "مدیریت استارتاپ دستگاه", (d, w) -> {
                     triggerAutostartSettings();
@@ -575,8 +573,7 @@ public class SettingsFragment extends Fragment {
     @Override
     public void onPause() {
         super.onPause();
-        // A hidden Settings tab still gets onPause when the app goes to the background; its
-        // inputs may be stale then (Home/Servers changed the prefs) and must not overwrite them.
+
         if (!isHidden()) saveConnectionSettings();
     }
 
@@ -587,7 +584,6 @@ public class SettingsFragment extends Fragment {
         else reloadConnectionInputs();
     }
 
-    /** Pulls the DNS fields Home / Servers may have changed while this tab was hidden. */
     private void reloadConnectionInputs() {
         if (dotHostnameInput == null) return;
         isBindingSetup = true;

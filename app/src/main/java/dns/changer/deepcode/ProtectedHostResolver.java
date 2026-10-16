@@ -73,7 +73,6 @@ final class ProtectedHostResolver {
         return result;
     }
 
-    /** Cache + underlying-network lookup only (no slow UDP bootstrap round). */
     List<String> resolveQuick(String host) {
         if (host == null) return Collections.emptyList();
         String h = host.trim();

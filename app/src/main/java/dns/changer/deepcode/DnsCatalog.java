@@ -44,11 +44,9 @@ public final class DnsCatalog {
         }
     }
 
-    // Encrypted DNS: only Iran-reachable providers.
     private static void addDot(List<DnsServer> list) {
         list.add(dot("Vanilla", "194.146.68.68", "194.146.68.66", "dns.vanillapp.ir", 853));
-        // No hardcoded bootstrap IP: that IP was found to be serving an expired certificate
-        // (a stale/decommissioned backend), so the hostname is resolved live instead.
+
         list.add(dot("Shecan", "", "", "free.shecan.ir", 853));
     }
 
@@ -97,7 +95,6 @@ public final class DnsCatalog {
 
     private static final List<GamePair> GAME_PAIRS = buildGamePairs();
 
-    /** One unique DNS pair (order-insensitive) and every game that uses it. */
     private static final class Group {
         final String a;
         final String b;
@@ -130,7 +127,7 @@ public final class DnsCatalog {
             Integer c = nameCount.get(g.name);
             nameCount.put(g.name, c == null ? 1 : c + 1);
         }
-        // Same name on several different pairs (e.g. three adult-block resolvers): number them.
+
         Map<String, Integer> seen = new LinkedHashMap<>();
         for (Group g : groups) {
             if (nameCount.get(g.name) > 1) {

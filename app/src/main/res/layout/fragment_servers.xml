@@ -18,7 +18,6 @@
             android:layout_height="match_parent"
             android:orientation="vertical">
 
-            <!-- Header: title + search button. Tapping the button reveals the M3 search bar over it. -->
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"

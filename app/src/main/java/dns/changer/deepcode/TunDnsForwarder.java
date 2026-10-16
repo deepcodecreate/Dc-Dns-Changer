@@ -105,7 +105,7 @@ public class TunDnsForwarder implements Runnable {
         outPkt[ihl + 4] = (byte) ((udpLen >> 8) & 0xFF);
         outPkt[ihl + 5] = (byte) (udpLen & 0xFF);
         outPkt[ihl + 6] = 0;
-        outPkt[ihl + 7] = 0; // UDP checksum optional on IPv4
+        outPkt[ihl + 7] = 0;
 
         System.arraycopy(dns, 0, outPkt, ihl + 8, dns.length);
 

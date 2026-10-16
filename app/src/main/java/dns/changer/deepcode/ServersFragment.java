@@ -68,7 +68,6 @@ public class ServersFragment extends Fragment implements ServerAdapter.ServerSel
     private DnsProtocol currentProtocol = DnsProtocol.UDP;
     private Uri pendingDeepLink;
 
-    // Search
     private View headerTitleRow, searchButton, searchBar, searchBack, searchClear;
     private EditText searchInput;
     private TextView searchEmpty;
@@ -77,7 +76,6 @@ public class ServersFragment extends Fragment implements ServerAdapter.ServerSel
     private Animator revealAnimator;
     private OnBackPressedCallback backCallback;
 
-    /** Called by HomeFragment right before switching to this tab. */
     public void setProtocol(DnsProtocol protocol) {
         currentProtocol = protocol;
         if (isAdded() && adapter != null) {
@@ -87,7 +85,6 @@ public class ServersFragment extends Fragment implements ServerAdapter.ServerSel
         }
     }
 
-    /** Refreshes the server tab after Home or Settings changes the protocol. */
     public void syncProtocolFromPreferences() {
         if (prefs == null) {
             prefs = requireContext().getSharedPreferences("vpn_prefs", Context.MODE_PRIVATE);
@@ -100,7 +97,6 @@ public class ServersFragment extends Fragment implements ServerAdapter.ServerSel
         }
     }
 
-    /** Called by MainActivity when a dnschanger://add link is opened. */
     public void handleDeepLink(Uri data) {
         if (!isAdded()) {
             pendingDeepLink = data;
@@ -548,7 +544,7 @@ public class ServersFragment extends Fragment implements ServerAdapter.ServerSel
         if (requireContext().getTheme().resolveAttribute(android.R.attr.colorAccent, tv, true)) {
             accent = tv.data;
         }
-        // slightly lighter than the dialog so the popup stands out, with a thin accent outline
+
         int popupBg = androidx.core.graphics.ColorUtils.blendARGB(bg, accent, 0.08f);
         float dp = getResources().getDisplayMetrics().density;
         android.graphics.drawable.GradientDrawable d = new android.graphics.drawable.GradientDrawable();
@@ -567,8 +563,6 @@ public class ServersFragment extends Fragment implements ServerAdapter.ServerSel
         if (dialog.getButton(AlertDialog.BUTTON_NEGATIVE) != null)
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(textColor);
     }
-
-    // ------------------------------------------------------------------ search
 
     private void setupSearch(View view, boolean isEnglish) {
         headerTitleRow = view.findViewById(R.id.header_title_row);
@@ -622,7 +616,7 @@ public class ServersFragment extends Fragment implements ServerAdapter.ServerSel
                 ? ViewAnimationUtils.createCircularReveal(searchBar, cx, cy, 0f, radius)
                 : ViewAnimationUtils.createCircularReveal(searchBar, cx, cy, radius, 0f);
         a.setDuration(opening ? 320 : 240);
-        a.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f)); // M3 emphasized
+        a.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
         return a;
     }
 
@@ -722,7 +716,6 @@ public class ServersFragment extends Fragment implements ServerAdapter.ServerSel
         return out;
     }
 
-    /** Re-filters the list with a diff animation (used while typing / after add & delete). */
     private void applyFilter() {
         if (adapter == null) return;
         List<DnsServer> next = computeVisible();
@@ -744,7 +737,6 @@ public class ServersFragment extends Fragment implements ServerAdapter.ServerSel
         applyServerSelection(server, false);
     }
 
-    /** True while DNS protection is active (VPN service running, or root DNS applied). */
     private boolean isConnected() {
         if (!prefs.getBoolean("vpn_active", false)) return false;
         if (prefs.getBoolean("root_mode", false)) return true;

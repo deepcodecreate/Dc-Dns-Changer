@@ -154,7 +154,6 @@ public class LogFragment extends Fragment {
         countLabel = view.findViewById(R.id.log_count_label);
     }
 
-    /** Paints the pill with the active theme: accent capsule, logo in a contrasting badge. */
     private void styleJumpButton(View root) {
         ThemeManager.ThemeDef def = ThemeManager.byId(ThemeManager.getSelectedId(requireContext()));
         float d = getResources().getDisplayMetrics().density;

@@ -55,7 +55,6 @@
                 android:paddingVertical="6dp"
                 android:scrollbars="vertical" />
 
-            <!-- "Latest log" pill: app logo + label + down arrow. Colored from code. -->
             <LinearLayout
                 android:id="@+id/jump_bottom_button"
                 android:layout_width="wrap_content"

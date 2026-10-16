@@ -74,8 +74,7 @@ public class MyVpnService extends VpnService implements Runnable {
 
         SharedPreferences prefs = getSharedPreferences("vpn_prefs", Context.MODE_PRIVATE);
         loadSettings(intent, prefs);
-        // Only an explicit running session may write to the in-app log.
-        // Constructing the service or opening the app remains silent.
+
         LogHelper.setSessionEnabled(getApplicationContext(), true);
 
         try {
@@ -96,13 +95,12 @@ public class MyVpnService extends VpnService implements Runnable {
         return START_STICKY;
     }
 
-    
     private void registerAutoReconnect(SharedPreferences prefs) {
         if (!prefs.getBoolean("auto_reconnect", true)) {
             unregisterAutoReconnect();
             return;
         }
-        if (networkCallback != null) return; // already registered
+        if (networkCallback != null) return;
         try {
             connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
             if (connectivityManager == null) return;
@@ -177,8 +175,7 @@ public class MyVpnService extends VpnService implements Runnable {
             ipv4 = prefs.getString("ipv4_address", VPN_ADDR);
             useDhcp = prefs.getBoolean("use_dhcp", false);
         }
-        // Only plain DNS needs a fallback resolver. For DoH/DoT an empty primary means "no
-        // bootstrap IP", and forcing 1.1.1.1 here made the endpoint unreachable on filtered networks.
+
         if ((dns1 == null || dns1.isEmpty()) && (protocol == DnsProtocol.UDP || protocol == DnsProtocol.TCP)) {
             dns1 = "1.1.1.1";
         }

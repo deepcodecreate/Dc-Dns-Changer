@@ -12,10 +12,6 @@ import android.view.animation.LinearInterpolator;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-/**
- * ExpressVPN-style connect control background with theme-aware dual curved arcs
- * and animated state rings framing the central power button.
- */
 public class ExpressPowerArcView extends View {
 
     public static final int STATE_DISCONNECTED = 0;
@@ -88,7 +84,7 @@ public class ExpressPowerArcView extends View {
             arcPaint.setColor(accentColor);
             outerRingPaint.setColor(alphaAccent);
             pulsePaint.setColor(Color.TRANSPARENT);
-        } else { // DISCONNECTED
+        } else {
             arcPaint.setColor(inactiveColor);
             outerRingPaint.setColor(Color.argb(25, 255, 255, 255));
             pulsePaint.setColor(Color.TRANSPARENT);
@@ -177,19 +173,15 @@ public class ExpressPowerArcView extends View {
         float arcStroke = dpToPx(6.5f);
         arcPaint.setStrokeWidth(arcStroke);
 
-        // Keep the original 72dp button/arc proportions while the larger view
-        // provides enough room for the expanding pulse ring at its widest point.
         float buttonRadius = dpToPx(36f);
-        float arcRadius = buttonRadius + dpToPx(8f); // Distance for the ExpressVPN curved arcs
+        float arcRadius = buttonRadius + dpToPx(8f);
         float outerRingRadius = arcRadius + dpToPx(9.5f);
 
         arcRect.set(centerX - arcRadius, centerY - arcRadius, centerX + arcRadius, centerY + arcRadius);
         outerRect.set(centerX - outerRingRadius, centerY - outerRingRadius, centerX + outerRingRadius, centerY + outerRingRadius);
 
-        // 1. Draw outer subtle ring
         canvas.drawCircle(centerX, centerY, outerRingRadius, outerRingPaint);
 
-        // 2. Connected state: radiating pulse wave outwards
         if (currentState == STATE_CONNECTED && pulseRadiusRatio > 0f) {
             float pulseRadius = arcRadius + (outerRingRadius - arcRadius + dpToPx(14f)) * pulseRadiusRatio;
             int pulseAlpha = (int) (130 * (1.0f - pulseRadiusRatio));
@@ -197,11 +189,10 @@ public class ExpressPowerArcView extends View {
             canvas.drawCircle(centerX, centerY, pulseRadius, pulsePaint);
         }
 
-        // 3. Draw ExpressVPN-style Dual Sweeping Curved Arcs (Opposing sweeping arcs)
         canvas.save();
         canvas.rotate(rotationAngle, centerX, centerY);
 
-        float sweepAngle = 105f; // Wide thick arcs
+        float sweepAngle = 105f;
         float gapAngle = 75f;
 
         if (currentState == STATE_DISCONNECTED) {
@@ -210,9 +201,8 @@ public class ExpressPowerArcView extends View {
             arcPaint.setAlpha(255);
         }
 
-        // First Arc
         canvas.drawArc(arcRect, 0f + gapAngle / 2f, sweepAngle, false, arcPaint);
-        // Second Arc
+
         canvas.drawArc(arcRect, 180f + gapAngle / 2f, sweepAngle, false, arcPaint);
 
         canvas.restore();

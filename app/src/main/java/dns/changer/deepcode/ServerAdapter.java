@@ -54,7 +54,6 @@ public class ServerAdapter extends RecyclerView.Adapter<ServerAdapter.ServerView
         notifyDataSetChanged();
     }
 
-    /** Swaps in a filtered list and animates inserts, removals and moves. */
     public void submitFiltered(List<DnsServer> newList) {
         final List<DnsServer> oldList = this.serverList;
         DiffUtil.DiffResult result = DiffUtil.calculateDiff(new DiffUtil.Callback() {

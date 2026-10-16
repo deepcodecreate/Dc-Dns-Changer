@@ -130,14 +130,6 @@ public final class ThemeManager {
         return 0;
     }
 
-    /**
-     * Paints a MaterialButtonToggleGroup (the UDP / TCP / DoT / DoH selector) with the
-     * active app theme: the selected segment is filled with the theme accent, the rest
-     * are transparent with accent text and a soft accent outline.
-     *
-     * Colors are applied from code (same approach as the bottom navigation) instead of
-     * a theme-attribute color selector, which crashes on some MIUI builds.
-     */
     public static void styleToggleGroup(Context context, MaterialButtonToggleGroup group) {
         if (group == null) return;
         ThemeDef def = byId(getSelectedId(context));

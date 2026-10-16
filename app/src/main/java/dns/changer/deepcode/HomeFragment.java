@@ -184,7 +184,7 @@ public class HomeFragment extends Fragment {
             String proto = bundle.getString("protocol");
             if (proto != null) applyProtocolUi(DnsProtocol.from(proto), true);
             persistCurrentFields();
-            // The user confirmed on the Servers tab that the current connection may be dropped.
+
             if (bundle.getBoolean("disconnect_first", false)) {
                 disconnectForServerSwitch();
             }
@@ -430,13 +430,12 @@ public class HomeFragment extends Fragment {
         }
     }
 
-    /** Drops the running connection so a newly picked server can be used from a clean state. */
     private void disconnectForServerSwitch() {
         isRootMode = prefs.getBoolean("root_mode", false);
         setButtonLoading(true);
         stopDnsConnection();
         cancelConnectTimeout();
-        // Safety net: if no state broadcast arrives, restore the button from the real state.
+
         connectTimeoutRunnable = () -> {
             if (connecting) {
                 connecting = false;
@@ -605,8 +604,7 @@ public class HomeFragment extends Fragment {
         try {
             DnsQueryEngine engine = new DnsQueryEngine(null, requireContext().getApplicationContext(), currentProtocol,
                     dns, textOf(dns2EditText), textOf(hostnameEditText), textOf(dohUrlEditText), parsePort());
-            // A ping is a UI diagnostic, not a DNS service event. It must not
-            // create a new log line every few seconds while the home screen is open.
+
             engine.setLoggingEnabled(false);
             return engine.measureLatencyMs();
         } catch (Exception e) {

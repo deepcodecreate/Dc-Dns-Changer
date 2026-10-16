@@ -65,11 +65,6 @@ public class LogHelper {
         if (listener != null) listener.onLogUpdate(line);
     }
 
-    /**
-     * Writes at most one copy of a repeated event during the supplied window.
-     * DNS queries can arrive many times per second, so raw per-packet errors
-     * should never be allowed to fill the user-facing log.
-     */
     public static void logRateLimited(Context context, String key, String message, long windowMs) {
         if (key == null || key.trim().isEmpty()) {
             log(context, message);
@@ -94,7 +89,6 @@ public class LogHelper {
                 .getBoolean(SESSION_KEY, false);
     }
 
-    
     public static List<String> getLogLines(Context context) {
         ensureLoaded(context);
         synchronized (lock) {
@@ -102,7 +96,6 @@ public class LogHelper {
         }
     }
 
-    
     public static String getLogs(Context context) {
         List<String> lines = getLogLines(context);
         return String.join("\n", lines);
@@ -211,7 +204,6 @@ public class LogHelper {
         }
     }
 
-    
     private static void trimFile(Context appContext) {
         List<String> snapshot;
         synchronized (lock) {

@@ -13,19 +13,6 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 
-/**
- * A TLS trust setup that trusts the device's own CA store PLUS a bundled copy of
- * "ISRG Root X1" (Let's Encrypt's root, res/raw/isrg_root_x1.pem, taken from Debian's
- * ca-certificates package).
- *
- * Why: on Android 7.1.1 and older, the system trust store does not contain ISRG Root X1
- * itself, it only trusts Let's Encrypt certificates through a cross-sign to "DST Root CA X3",
- * which expired in September 2021. Any DoT/DoH server using a plain Let's Encrypt certificate
- * (very common, e.g. many Iranian DNS providers) then fails with exactly the symptom this app
- * hit: the TCP/TLS handshake completes, a correct and valid certificate is presented, but chain
- * validation still fails, because the device cannot build a path to a root it trusts. Bundling
- * the root ourselves fixes that without needing any change from the server side.
- */
 final class AppTrustManager {
     private static volatile SSLSocketFactory socketFactory;
     private static volatile X509TrustManager trustManager;
@@ -51,7 +38,6 @@ final class AppTrustManager {
                 KeyStore merged = KeyStore.getInstance(KeyStore.getDefaultType());
                 merged.load(null, null);
 
-                // Copy every certificate the device already trusts.
                 int systemAnchorCount = 0;
                 try {
                     KeyStore system = KeyStore.getInstance("AndroidCAStore");
@@ -63,10 +49,9 @@ final class AppTrustManager {
                         systemAnchorCount++;
                     }
                 } catch (Exception ignored) {
-                    // No AndroidCAStore (e.g. unit test JVM) — fall back to our bundled root only.
+
                 }
 
-                // Add our bundled fallback root, in case the device's own store is missing it.
                 CertificateFactory cf = CertificateFactory.getInstance("X.509");
                 X509Certificate extra;
                 try (java.io.InputStream in = context.getResources().openRawResource(R.raw.isrg_root_x1)) {
@@ -94,8 +79,7 @@ final class AppTrustManager {
                         "Custom trust store ready: " + systemAnchorCount + " system anchors + bundled root",
                         3600000L);
             } catch (Exception e) {
-                // Merged store failed to build (shouldn't normally happen) — fall back to the
-                // platform default rather than leaving TLS entirely broken.
+
                 trustManager = null;
                 socketFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
                 LogHelper.logRateLimited(context, "trust-store-init-failed",

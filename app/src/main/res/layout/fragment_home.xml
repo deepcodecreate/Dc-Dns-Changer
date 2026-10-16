@@ -13,7 +13,6 @@
         android:orientation="vertical"
         android:paddingBottom="80dp">
 
-        <!-- Quiet app bar: navigation destinations live in the bottom bar. -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="56dp"
@@ -38,7 +37,6 @@
                 android:textSize="10sp" />
         </LinearLayout>
 
-        <!-- Express-style hero card: horizontal arrangement -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -63,7 +61,6 @@
                 android:paddingEnd="20dp"
                 android:paddingBottom="16dp">
 
-                <!-- Left side: ExpressPowerArcView + 72dp button -->
                 <FrameLayout
                     android:layout_width="144dp"
                     android:layout_height="144dp"
@@ -114,7 +111,6 @@
                         app:trackThickness="3dp" />
                 </FrameLayout>
 
-                <!-- Right side: Status labels & live ping info -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -152,7 +148,6 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Compact protocol selector. -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -253,7 +248,6 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Real Material 3 text fields: outlined boxes, compact but still 52dp touch targets. -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

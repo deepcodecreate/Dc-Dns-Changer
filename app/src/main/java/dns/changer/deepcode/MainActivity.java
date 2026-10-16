@@ -8,10 +8,6 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
-/**
- * Single-activity host: a floating Telegram-style tab bar switches between the
- * four main screens, each implemented as a Fragment (previously separate Activities).
- */
 public class MainActivity extends BaseActivity {
 
     private static final String TAG_HOME = "home";
@@ -71,11 +67,6 @@ public class MainActivity extends BaseActivity {
         handleIntent(getIntent());
     }
 
-    /**
-     * Fills the floating tab bar with the four destinations and paints it with
-     * the active theme. Colors come from ThemeManager (plain ints) rather than
-     * theme-attribute selectors, which crash on some MIUI builds.
-     */
     private void setupBottomNavigation() {
         if (bottomNav == null) return;
         ThemeManager.ThemeDef def = ThemeManager.byId(ThemeManager.getSelectedId(this));
@@ -132,7 +123,6 @@ public class MainActivity extends BaseActivity {
         activeFragment = target;
     }
 
-    /** Lets a hosted fragment switch the visible tab (e.g. after picking a server). */
     public void selectTab(int menuItemId) {
         bottomNav.setSelectedItemId(menuItemId);
     }
