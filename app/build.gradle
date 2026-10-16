@@ -20,12 +20,12 @@ android {
 
     signingConfigs {
         release {
-            def ks = file("deepcode.jks")
+            def ks = file("your keystore")
             if (ks.exists()) {
                 storeFile ks
-                storePassword "deep121212A"
-                keyAlias "deepiran"
-                keyPassword "deep121212A"
+                storePassword "pass"
+                keyAlias "alias"
+                keyPassword "pass"
             }
         }
     }
