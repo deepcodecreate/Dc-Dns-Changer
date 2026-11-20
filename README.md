@@ -17,6 +17,8 @@
   <a href="https://t.me/deepcodecreate">Telegram</a>
 </p>
 
+[![Get it in Lumen Store](https://deepcodecreate.github.io/lumenstore/badges/lumen-store.svg)](https://deepcodecreate.github.io/lumenstore/app.html?id=dns.changer.deepcode)
+
 ---
 
 ## Features
